@@ -27,7 +27,7 @@ intersección de planos de falla.
 # -----------------------------------------------------------------------------
 
 import numpy as np
-from motor_calculos_columna import generar_diagrama_interaccion
+from col_flex_com import generar_diagrama_interaccion
 
 def _crear_malla_matplotlib(puntos_2d_fuerte, puntos_2d_debil, num_contornos=40, num_puntos_contorno=40):
     """
