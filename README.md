@@ -7,7 +7,7 @@
 ![PySide6](https://img.shields.io/badge/GUI-PySide6-green?logo=qt)
 ![OpenGL](https://img.shields.io/badge/Render-OpenGL-red?logo=opengl)
 
-VORTEX 3D es una herramienta computacional desarrollada en Python para el análisis y diseño de estructuras aporticadas en tres dimensiones, fundamentada en el **Método Matricial de Rigidez (FEM)**. Su objetivo es brindar una plataforma transparente, auditable y de código abierto para la validación de cálculos estructurales y el aprendizaje académico.
+VORTEX 3D es una herramienta computacional desarrollada en Python para el análisis y diseño de estructuras aporticadas en tres dimensiones, fundamentada en el **Método Matricial de Rigidez**. Su objetivo es brindar una plataforma transparente, auditable y de código abierto para la validación de cálculos estructurales y el aprendizaje académico.
 
 ---
 
