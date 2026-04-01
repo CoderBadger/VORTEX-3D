@@ -1,0 +1,8 @@
+ezdxf==1.4.3
+matplotlib==3.10.8
+numpy==2.4.4
+PyOpenGL==3.1.10
+pyqtgraph==0.14.0
+pyside6==6.11.0
+pyside6_addons==6.11.0
+pyside6_essentials==6.11.0
