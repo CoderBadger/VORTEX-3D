@@ -13,7 +13,7 @@ tributarias de losas y distribuye las cargas superficiales hacia los elementos
 # Este programa es software libre: puedes redistribuirlo y/o modificarlo
 # bajo los términos de la Licencia Pública General GNU (GNU GPL) publicada
 # por la Free Software Foundation, ya sea la versión 3 de la Licencia, o
-# (a tu elección) cualquier versión posterior.
+# cualquier versión posterior.
 #
 # Este programa se distribuye con la esperanza de que sea útil,
 # pero SIN GARANTÍA ALGUNA; ni siquiera la garantía implícita

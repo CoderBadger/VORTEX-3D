@@ -13,7 +13,7 @@ visual y modularidad del diseño en VOTX3D.
 # Este programa es software libre: puedes redistribuirlo y/o modificarlo
 # bajo los términos de la Licencia Pública General GNU (GNU GPL) publicada
 # por la Free Software Foundation, ya sea la versión 3 de la Licencia, o
-# (a tu elección) cualquier versión posterior.
+# cualquier versión posterior.
 #
 # Este programa se distribuye con la esperanza de que sea útil,
 # pero SIN GARANTÍA ALGUNA; ni siquiera la garantía implícita
@@ -837,8 +837,6 @@ class PestañaMateriales(PestañaBase):
         self.tabla.blockSignals(False)
         self.id_mat.setValue(self.modelo.get_siguiente_id(self.modelo.materiales))
 
-# CONTINUAR ELIMINANDO COMENTARIOS DESDE AQUÍ.
-
 class PestañaDefinicionLosas(PestañaBase):
     def __init__(self, modelo, gestor_visualizacion, ventana_principal):
         super().__init__(modelo, gestor_visualizacion, ventana_principal)
@@ -927,7 +925,6 @@ class PestañaDefinicionLosas(PestañaBase):
             espesor_val = self.espesor_losa.value()
             pe_val = self.pe_losa.value()
 
-            # Llamamos a los nuevos métodos del modelo
             if id_val in self.modelo.losas:
                 self.modelo.actualizar_losa(id_val, nodos_lista, distribucion, eje_uni, espesor_val, pe_val)
             else:
@@ -964,7 +961,6 @@ class PestañaDefinicionLosas(PestañaBase):
             idx_eje = self.combo_eje_uni.findText(datos['eje_uni'])
             self.combo_eje_uni.setCurrentIndex(idx_eje)
         
-        # Poblar los nuevos campos
         self.espesor_losa.setValue(datos.get('espesor', 0.20))
         self.pe_losa.setValue(datos.get('peso_especifico', 24.0))
 
@@ -1024,20 +1020,16 @@ class PestañaDefinicionLosas(PestañaBase):
             QMessageBox.warning(self, "Error", "No se pudieron obtener los IDs de las losas seleccionadas.")
             return
 
-        # 1. Crear y mostrar el nuevo diálogo
         dialogo = DialogoEditarLosasLote(self)
         
         if dialogo.exec():
-            # 2. Obtener los valores del diálogo
             valores = dialogo.get_valores_lote()
-            
-            # Comprobar si al menos se seleccionó una propiedad para cambiar
+
             if all(v is None for v in valores.values()):
                 QMessageBox.information(self, "Sin Cambios", "No se seleccionó ninguna propiedad para modificar.")
                 return
             
             try:
-                # 3. Llamar al nuevo método del modelo
                 num_actualizados = self.modelo.actualizar_propiedades_losas_lote(
                     ids_losas=ids_losas_a_modificar, 
                     distribucion=valores['distribucion'],
@@ -1049,10 +1041,9 @@ class PestañaDefinicionLosas(PestañaBase):
                 QMessageBox.information(self, "Éxito", 
                     f"{num_actualizados} losas han sido actualizadas."
                 )
-                
-                # 4. Refrescar la GUI
+
                 self.refrescar() 
-                self.datos_modificados.emit() # Refresca la vista 3D
+                self.datos_modificados.emit() 
 
             except ValueError as e:
                 QMessageBox.critical(self, "Error en Asignación", str(e))
@@ -1061,7 +1052,7 @@ class PestañaDefinicionLosas(PestañaBase):
 
     def refrescar(self):
         self.tabla.blockSignals(True)
-        self.tabla.setRowCount(0) # Limpiar la tabla antes de rellenar
+        self.tabla.setRowCount(0)
 
         for i, (id_losa, datos) in enumerate(sorted(self.modelo.losas.items())):
             self.tabla.insertRow(i)
@@ -1070,7 +1061,6 @@ class PestañaDefinicionLosas(PestañaBase):
             espesor_val = datos.get('espesor', 0.0)
             pe_val = datos.get('peso_especifico', 0.0)
 
-            # El item de ID no debe ser editable
             id_item = QTableWidgetItem(str(id_losa))
             id_item.setFlags(id_item.flags() & ~Qt.ItemIsEditable)
             self.tabla.setItem(i, 0, id_item)
@@ -1083,7 +1073,6 @@ class PestañaDefinicionLosas(PestañaBase):
 
         self.tabla.blockSignals(False)
         self.id_losa.setValue(self.modelo.get_siguiente_id(self.modelo.losas))
-        # Desactivar botón de guardar después de refrescar
         self.btn_guardar_tabla.setEnabled(False)
 
 class PestañaHipotesisDeCarga(PestañaBase):
@@ -1102,7 +1091,6 @@ class PestañaHipotesisDeCarga(PestañaBase):
         self.nombre_hipotesis = QLineEdit()
         self.nombre_hipotesis.setPlaceholderText("Ej: Carga Viva Oficinas")
         self.tipo_carga_combo = QComboBox()
-        # Tipos de carga fundamentales según normativas
         self.tipo_carga_combo.addItems(['D', 'L', 'Lr', 'W', 'E', 'S', 'R', 'H'])
 
         layout_form.addRow("ID Hipótesis:", self.id_hipotesis)
@@ -1120,7 +1108,7 @@ class PestañaHipotesisDeCarga(PestañaBase):
         self.tabla.setHorizontalHeaderLabels(["ID", "Nombre", "Tipo"])
         self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tabla.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tabla.setEditTriggers(QAbstractItemView.NoEditTriggers) # La tabla no se edita directamente
+        self.tabla.setEditTriggers(QAbstractItemView.NoEditTriggers) 
         layout.addWidget(self.tabla)
         
         self.btn_agregar.clicked.connect(self.agregar_o_actualizar)
@@ -1141,7 +1129,7 @@ class PestañaHipotesisDeCarga(PestañaBase):
             else:
                 self.modelo.agregar_hipotesis(nombre, tipo)
             
-            self.datos_modificados.emit() # Emitir señal para que otras pestañas se refresquen
+            self.datos_modificados.emit() 
             self.refrescar()
         except ValueError as e:
             QMessageBox.warning(self, "Error de Datos", str(e))
@@ -1195,10 +1183,8 @@ class PestañaCombinaciones(PestañaBase):
 
         
         self.filas_factores = []
-        # Agregamos 'Ninguno' y todos los tipos de la normativa
         tipos_disponibles = ['Ninguno', 'D', 'L', 'Lr', 'W', 'E', 'S', 'R', 'H']
         
-        # Permitimos definir hasta 6 términos por combinación (más que suficiente para NB/ACI/ASCE)
         for i in range(6):
             combo_tipo = QComboBox()
             combo_tipo.addItems(tipos_disponibles)
@@ -1246,15 +1232,12 @@ class PestañaCombinaciones(PestañaBase):
         if nombre in nombres_existentes: 
             QMessageBox.warning(self, "Error", f"La combinación '{nombre}' ya existe.")
             return
-            
-        # Extraemos los factores de los ComboBox y SpinBox
+
         factores = {}
         for combo, spin in self.filas_factores:
             tipo = combo.currentText()
             valor = spin.value()
-            # Ignoramos si es 'Ninguno' o el factor es cero
             if tipo != 'Ninguno' and valor != 0.0:
-                # Sumamos por si el usuario repite el mismo tipo en dos filas distintas
                 factores[tipo] = factores.get(tipo, 0.0) + valor
                 
         if not factores: 
@@ -1416,20 +1399,16 @@ class PestañaCargas(PestañaBase):
         layout = QFormLayout(widget)
         layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
 
-        # self.id_carga_sup_losa = QSpinBox(minimum=1, maximum=9999) # <-- ELIMINADO
         self.combo_hipotesis_losa = QComboBox()
-        
-        # --- ¡CAMBIO! De QSpinBox a QLineEdit ---
         self.id_losa_input = QLineEdit() 
         self.id_losa_input.setPlaceholderText("Ej: 1, 2, 4")
-        # --- FIN CAMBIO ---
+
         
         self.wz_losa_input = QDoubleSpinBox(decimals=3, minimum=-1e9, maximum=1e9)
         self.wz_losa_input.setToolTip("Carga superficial en Z global (kN/m²). Un valor negativo es hacia abajo.")
 
-        # layout.addRow("ID Carga Superficial:", self.id_carga_sup_losa) # <-- ELIMINADO
         layout.addRow("Asignar a Hipótesis:", self.combo_hipotesis_losa)
-        layout.addRow("ID(s) de Losa:", self.id_losa_input) # <-- TEXTO CAMBIADO
+        layout.addRow("ID(s) de Losa:", self.id_losa_input) 
         layout.addRow("Carga Superficial (wz) [kN/m²]:", self.wz_losa_input)
 
         advertencia = QLabel("Nota: La distribución es ideal para losas rectangulares/convexas\nsoportadas por vigas en su perímetro.")
@@ -1449,17 +1428,14 @@ class PestañaCargas(PestañaBase):
                 ids_a_cargar = self._parsear_ids(self.carga_nodo_id.text())
                 if not ids_a_cargar: raise ValueError("Entrada de IDs de nodo no válida.")
                 for id_nodo in ids_a_cargar:
-                    # NUEVA LLAMADA
                     self.modelo.agregar_carga_nodal(id_nodo, id_hipotesis, vector)
             elif tipo_carga == "elemento":
                 id_hipotesis = self.combo_hipotesis_elem.currentData()
                 if id_hipotesis is None: raise ValueError("Debe seleccionar una hipótesis válida.")
-                # El tipo de carga ya no va en los datos, lo gestiona la hipótesis
                 datos_carga = ("uniforme",) + tuple(s.value() for s in self.cargas_dist) 
                 ids_a_cargar = self._parsear_ids(self.carga_elem_id.text())
                 if not ids_a_cargar: raise ValueError("Entrada de IDs de elemento no válida.")
                 for id_elem in ids_a_cargar:
-                    # NUEVA LLAMADA
                     self.modelo.agregar_carga_elemento(id_elem, id_hipotesis, datos_carga)
             elif tipo_carga == "losa":
                 id_hipotesis = self.combo_hipotesis_losa.currentData()
@@ -1470,17 +1446,13 @@ class PestañaCargas(PestañaBase):
                 if abs(wz) < 1e-9:
                     raise ValueError("El valor de la carga no puede ser cero.")
                 
-                # --- ¡CAMBIO! Parsear múltiples IDs ---
                 ids_losas_a_cargar = self._parsear_ids(self.id_losa_input.text())
                 if not ids_losas_a_cargar:
                     raise ValueError("Entrada de IDs de losa no válida.")
 
-                # --- ¡CAMBIO! Bucle para crear múltiples cargas ---
                 for id_losa in ids_losas_a_cargar:
-                    # Llamamos al método del modelo con ID=None para forzar la creación
-                    # de una nueva carga superficial para CADA losa.
                     self.modelo.agregar_o_actualizar_carga_superficial(
-                        None, # ID de la carga (automático)
+                        None,
                         id_losa, 
                         id_hipotesis, 
                         wz
@@ -1492,7 +1464,6 @@ class PestañaCargas(PestañaBase):
              QMessageBox.warning(self, "Error de Entrada", str(e))
             
     def eliminar(self):
-        # Obtenemos los índices de todas las filas seleccionadas, sin duplicados
         filas_seleccionadas = sorted(list(set(item.row() for item in self.tabla.selectedItems())), reverse=True)
         
         if not filas_seleccionadas:
@@ -1509,23 +1480,21 @@ class PestañaCargas(PestañaBase):
                 datos_carga = self.tabla.item(fila, 0).data(Qt.UserRole)
                 if not datos_carga: continue
 
-                id_carga, tipo_carga = datos_carga # Obtenemos la tupla
+                id_carga, tipo_carga = datos_carga 
 
                 if tipo_carga == 'nodal' or tipo_carga == 'elemento':
-                    self.modelo.eliminar_carga(id_carga) # Método antiguo para nodales/elementos
+                    self.modelo.eliminar_carga(id_carga) 
                 elif tipo_carga == 'losa':
-                    self.modelo.eliminar_carga_superficial(id_carga) # Método nuevo para losas
+                    self.modelo.eliminar_carga_superficial(id_carga) 
             
             self.datos_modificados.emit()
             self.refrescar()
 
     def refrescar(self):
-        # --- NUEVO: Guardar las selecciones actuales antes de limpiar ---
         hip_nodal_sel = self.combo_hipotesis_nodal.currentData()
         hip_elem_sel = self.combo_hipotesis_elem.currentData()
         hip_losa_sel = self.combo_hipotesis_losa.currentData()
 
-        # 1. Refrescar los ComboBox de hipótesis
         self.combo_hipotesis_nodal.clear()
         self.combo_hipotesis_elem.clear()
         if not self.modelo.hipotesis_de_carga:
@@ -1537,7 +1506,6 @@ class PestañaCargas(PestañaBase):
                 self.combo_hipotesis_nodal.addItem(texto, id_hip)
                 self.combo_hipotesis_elem.addItem(texto, id_hip)
 
-        # --- NUEVO: Restaurar selecciones de Nodal y Elemento ---
         if hip_nodal_sel is not None:
             idx_nodal = self.combo_hipotesis_nodal.findData(hip_nodal_sel)
             if idx_nodal >= 0: self.combo_hipotesis_nodal.setCurrentIndex(idx_nodal)
@@ -1546,7 +1514,6 @@ class PestañaCargas(PestañaBase):
             idx_elem = self.combo_hipotesis_elem.findData(hip_elem_sel)
             if idx_elem >= 0: self.combo_hipotesis_elem.setCurrentIndex(idx_elem)
 
-        # 2. Refrescar la tabla de cargas
         self.tabla.blockSignals(True)
         self.tabla.setRowCount(0)
         self.tabla.setHorizontalHeaderLabels(["ID Carga", "Hipótesis", "Ubicación", "Valores"])
@@ -1554,7 +1521,6 @@ class PestañaCargas(PestañaBase):
         def formatear_vector(vector, prefijos):
             return ", ".join([f"{p}: {v:.2f}" for p, v in zip(prefijos, vector) if abs(v) > 1e-6])
 
-        # Cargas Nodales
         for carga in self.modelo.cargas_nodales:
             fila = self.tabla.rowCount()
             self.tabla.insertRow(fila)
@@ -1572,7 +1538,6 @@ class PestañaCargas(PestañaBase):
             self.tabla.setItem(fila, 2, QTableWidgetItem(f"Nodo {carga['id_nodo']}"))
             self.tabla.setItem(fila, 3, QTableWidgetItem(valores_str))
 
-        # Cargas de Elemento
         for carga in self.modelo.cargas_elementos:
             fila = self.tabla.rowCount()
             self.tabla.insertRow(fila)
@@ -1590,7 +1555,6 @@ class PestañaCargas(PestañaBase):
             self.tabla.setItem(fila, 2, QTableWidgetItem(f"Elem {carga['id_elemento']}"))
             self.tabla.setItem(fila, 3, QTableWidgetItem(valores_str))
 
-        # Cargas Superficiales (de Losa)
         for id_carga_sup, carga in self.modelo.cargas_superficiales.items():
             fila = self.tabla.rowCount()
             self.tabla.insertRow(fila)
@@ -1614,7 +1578,6 @@ class PestañaCargas(PestañaBase):
                 texto = f"{datos['nombre']} (Tipo: {datos['tipo']})"
                 self.combo_hipotesis_losa.addItem(texto, id_hip)
 
-        # --- NUEVO: Restaurar selección de Losa ---
         if hip_losa_sel is not None:
             idx_losa = self.combo_hipotesis_losa.findData(hip_losa_sel)
             if idx_losa >= 0: self.combo_hipotesis_losa.setCurrentIndex(idx_losa)
@@ -1726,8 +1689,6 @@ class PestañaApoyos(PestañaBase):
                 self.tabla.setCellWidget(i, j + 1, cell_widget)
         self.tabla.blockSignals(False)
         self.btn_guardar_tabla.setEnabled(False)
-
-# --- AGREGAR AL FINAL DE widgets_gui.py ---
 
 class DialogoConfiguracionCortes(QDialog):
     """
@@ -1869,18 +1830,7 @@ class PestañaResultados(QWidget):
         self.combo_combinaciones.blockSignals(True)
         self.combo_combinaciones.clear()
         if self.resultados_completos:
-            # --- INICIO DE LA MODIFICACIÓN ---
-            
-            # Obtenemos todas las claves (nombres)
             todas_las_claves = self.resultados_completos.keys()
-            
-            # Usamos una clave de ordenamiento personalizada
-            # Esto crea una tupla de prioridad:
-            # 1. (False, 'Cálculo Simple')
-            # 2. (True, '1.2D + 1.6L')
-            # 3. (True, '1.4D')
-            # Como False < True, 'Cálculo Simple' siempre va primero.
-            # El resto (los True) se ordenan por su nombre (el 2do item de la tupla).
             nombres_combos = sorted(todas_las_claves, 
                                     key=lambda nombre: (nombre != 'Cálculo Simple', nombre))
             self.combo_combinaciones.addItems(nombres_combos)
@@ -1906,7 +1856,6 @@ class PestañaResultados(QWidget):
             self.combo_sub_casos.addItem(nombre, nombre)
             
         self.combo_sub_casos.blockSignals(False)
-        # Forzamos una actualización inmediata si hay items
         if self.combo_sub_casos.count() > 0:
             self.actualizar_tablas_resultados()
 
@@ -1983,7 +1932,6 @@ class DialogoOpcionesAvanzadasReporte(QDialog):
         self.setWindowTitle("Opciones Avanzadas del Reporte")
         self.setMinimumWidth(400)
         
-        # Diccionario para almacenar el estado de las opciones
         self.opciones = config_actual if config_actual else self._get_defaults()
 
         layout_principal = QVBoxLayout(self)
@@ -2028,20 +1976,16 @@ class DialogoOpcionesAvanzadasReporte(QDialog):
         layout_matrices.addWidget(self.rb_kglobal_diag)
         layout_matrices.addWidget(self.rb_kglobal_completa)
         
-        # Establecer la opción por defecto (Diagonal)
         self.rb_kglobal_diag.setChecked(True)
         
         layout_principal.addWidget(grupo_matrices_globales)
         
-        # --- (Futuro V2) Filtro por Elementos ---
-        # grupo_filtro = QGroupBox("Filtrar Detalles por Elemento (Opcional)")
-        # layout_filtro = QFormLayout(grupo_filtro)
-        # self.le_filtro_elementos = QLineEdit()
-        # self.le_filtro_elementos.setPlaceholderText("Ej: 1, 5, 10-15")
-        # layout_filtro.addRow("Mostrar detalle solo para IDs:", self.le_filtro_elementos)
-        # layout_principal.addWidget(grupo_filtro)
+        # --- Recordar añadir un Filtro por Elementos ---
+        # Este mostrará los detalles completos solo de los elementos seleccionados.
+        # Considerar métodos de entrada eficientes para seleccionar varios elementos
+        # de la misma forma en la que se seleccionan las páginas para imprimir
+        # Ejemplo: 1-10, 15, 17-19 (del elemento 1 al 10, el 15 y del 17 al 19)
 
-        # --- Botones Aceptar/Cancelar ---
         botones = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         botones.accepted.connect(self._guardar_opciones)
         botones.rejected.connect(self.reject)
@@ -2058,8 +2002,8 @@ class DialogoOpcionesAvanzadasReporte(QDialog):
             'mostrar_vectores_desplazamiento': False,
             'mostrar_vectores_reacciones': False,
             'mostrar_detalle_fuerzas_todas': False,
-            'mostrar_kglobal': 'diagonal', # 'no', 'diagonal', 'completa'
-            # 'filtro_elementos_ids': [] # Para V2
+            'mostrar_kglobal': 'diagonal', 
+            # añadir 'filtro_elementos_ids'
         }
 
     def _cargar_opciones_actuales(self):
@@ -2076,8 +2020,7 @@ class DialogoOpcionesAvanzadasReporte(QDialog):
         elif kglobal_opt == 'completa': self.rb_kglobal_completa.setChecked(True)
         else: self.rb_kglobal_diag.setChecked(True) # Default a diagonal
         
-        # Cargar filtro V2
-        # self.le_filtro_elementos.setText(",".join(map(str, self.opciones.get('filtro_elementos_ids', []))))
+        # Cargar filtro de elementos
 
     def _guardar_opciones(self):
         # Guarda el estado actual de los controles en self.opciones
@@ -2091,27 +2034,12 @@ class DialogoOpcionesAvanzadasReporte(QDialog):
         if self.rb_kglobal_no.isChecked(): self.opciones['mostrar_kglobal'] = 'no'
         elif self.rb_kglobal_completa.isChecked(): self.opciones['mostrar_kglobal'] = 'completa'
         else: self.opciones['mostrar_kglobal'] = 'diagonal'
-        
-        # Guardar filtro V2
-        # try:
-        #     # Simple parsing for now, needs more robust implementation
-        #     ids_str = self.le_filtro_elementos.text().strip()
-        #     if ids_str:
-        #         ids = [int(x.strip()) for x in ids_str.split(',') if x.strip()]
-        #         self.opciones['filtro_elementos_ids'] = sorted(list(set(ids)))
-        #     else:
-        #         self.opciones['filtro_elementos_ids'] = []
-        # except ValueError:
-        #     QMessageBox.warning(self, "Error Filtro", "Formato de IDs de elemento no válido. Use comas para separar.")
-        #     return # No aceptar si el filtro es inválido
 
-        self.accept() # Cierra el diálogo y retorna Accepted
+        self.accept()
 
     def get_opciones_avanzadas(self):
-        # Método para obtener el diccionario de opciones guardado
         return self.opciones
 
-# --- NUEVA CLASE: Diálogo Principal de Configuración ---
 class DialogoConfigReporte(QDialog):
     def __init__(self, resultados_calculo, config_avanzada_actual=None, parent=None):
         super().__init__(parent)
@@ -2126,22 +2054,17 @@ class DialogoConfigReporte(QDialog):
         # --- Grupo Selección Combinaciones/Casos ---
         grupo_combos = QGroupBox("Seleccionar Combinaciones y Casos a Incluir")
         layout_combos = QVBoxLayout(grupo_combos)
-        
-        # --- NUEVOS BOTONES DE SELECCIÓN RÁPIDA ---
         layout_botones_sel = QHBoxLayout()
         self.btn_sel_todo = QPushButton("Seleccionar Todo")
         self.btn_sel_ninguno = QPushButton("Ninguno")
         
         layout_botones_sel.addWidget(self.btn_sel_todo)
         layout_botones_sel.addWidget(self.btn_sel_ninguno)
-        layout_botones_sel.addStretch() # Empuja los botones a la izquierda
-        
+        layout_botones_sel.addStretch() 
         layout_combos.addLayout(layout_botones_sel)
-        # ------------------------------------------
 
         self.arbol_combos = QTreeWidget()
         
-        # Conectar los nuevos botones
         self.btn_sel_todo.clicked.connect(self._seleccionar_todo_arbol)
         self.btn_sel_ninguno.clicked.connect(self._deseleccionar_todo_arbol)
 
@@ -2156,7 +2079,7 @@ class DialogoConfigReporte(QDialog):
         grupo_secciones = QGroupBox("Secciones Principales del Reporte")
         layout_secciones = QGridLayout(grupo_secciones)
         
-        # Defaults "Modo Verificación" (ON por defecto)
+        # Defaults 
         self.cb_datos_entrada = QCheckBox("Datos de Entrada (Nodos, Elem, Mat, etc.)")
         self.cb_datos_entrada.setChecked(True); self.cb_datos_entrada.setEnabled(False) # Siempre incluido
         self.cb_proc_losas = QCheckBox("Procesamiento Cargas de Losa")
@@ -2206,8 +2129,7 @@ class DialogoConfigReporte(QDialog):
             for nombre_caso in nombres_sub_casos:
                 item_caso = QTreeWidgetItem(item_combo, [nombre_caso])
                 item_caso.setFlags(item_caso.flags() | Qt.ItemIsUserCheckable)
-                item_caso.setCheckState(0, Qt.Checked) # Marcado por defecto
-                # Guardamos la tupla (combo, caso) como data
+                item_caso.setCheckState(0, Qt.Checked)
                 item_caso.setData(0, Qt.UserRole, (nombre_combo, nombre_caso))
     def _seleccionar_todo_arbol(self):
         """Marca todos los elementos del árbol."""
@@ -2232,7 +2154,6 @@ class DialogoConfigReporte(QDialog):
                 item_hijo.setCheckState(0, estado)
 
         self.arbol_combos.expandAll()
-        # Ajustar ancho de columna después de poblar
         self.arbol_combos.header().setSectionResizeMode(QHeaderView.ResizeToContents)
 
 
@@ -2251,7 +2172,6 @@ class DialogoConfigReporte(QDialog):
         root = self.arbol_combos.invisibleRootItem()
         for i in range(root.childCount()):
             item_combo = root.child(i)
-            # Si el combo padre está marcado, revisamos los hijos
             if item_combo.checkState(0) == Qt.Checked:
                 for j in range(item_combo.childCount()):
                     item_caso = item_combo.child(j)
@@ -2259,7 +2179,6 @@ class DialogoConfigReporte(QDialog):
                         combo_caso_tuple = item_caso.data(0, Qt.UserRole)
                         if combo_caso_tuple:
                             config['casos_seleccionados'].append(combo_caso_tuple)
-            # Podríamos añadir lógica para añadir TODOS los hijos si el padre está marcado y algún hijo no (opcional)
 
         # 2. Secciones Principales
         config['mostrar_proc_losas'] = self.cb_proc_losas.isChecked()
@@ -2267,39 +2186,32 @@ class DialogoConfigReporte(QDialog):
         config['mostrar_resolucion'] = self.cb_resolucion.isChecked()
         config['mostrar_fuerzas_int'] = self.cb_fuerzas_int.isChecked()
         config['mostrar_resumen_max'] = self.cb_resumen_max.isChecked()
-        # Datos de entrada siempre va implícito
 
-        # 3. Opciones Avanzadas (las que se guardaron del otro diálogo)
+        # 3. Opciones Avanzadas 
         config.update(self.config_avanzada) # Añade/sobrescribe con las opciones avanzadas
 
         return config
 
-# --- Modificación de la clase PestañaReporte ---
 class PestañaReporte(QWidget):
-    # Añadir signal para conectar con status bar
     enviar_mensaje_statusbar = Signal(str, int)
 
-    def __init__(self, modelo): # Ahora recibe el modelo
+    def __init__(self, modelo): 
         super().__init__()
-        self.modelo = modelo # Guardamos referencia al modelo
-        self.ultima_config_avanzada = {} # Para recordar las opciones avanzadas
+        self.modelo = modelo 
+        self.ultima_config_avanzada = {} 
 
         layout = QVBoxLayout(self)
 
-        # Botón para configurar y generar
         self.btn_configurar_generar = QPushButton("Configurar y Generar Reporte")
         self.btn_configurar_generar.clicked.connect(self._abrir_dialogo_config_reporte)
-        # Deshabilitado inicialmente hasta que haya resultados
         self.btn_configurar_generar.setEnabled(False)
 
         layout.addWidget(self.btn_configurar_generar, alignment=Qt.AlignLeft)
 
         self.reporte_texto = QTextEdit()
         self.reporte_texto.setReadOnly(True)
-        # Asegurar fuente monoespaciada y no envolver líneas
         self.reporte_texto.setFont(QFont("Consolas, Courier New, monospace", 9))
         self.reporte_texto.setLineWrapMode(QTextEdit.NoWrap)
-        # Mensaje inicial
         self.reporte_texto.setPlaceholderText("Realice un cálculo y luego configure y genere un reporte...")
 
         layout.addWidget(self.reporte_texto)
@@ -2312,7 +2224,6 @@ class PestañaReporte(QWidget):
         dialogo_cfg = DialogoConfigReporte(self.modelo.resultados_calculo, self.ultima_config_avanzada, self)
         if dialogo_cfg.exec():
             config = dialogo_cfg.get_configuracion()
-            # Guardamos las opciones avanzadas para la próxima vez
             self.ultima_config_avanzada = {k: v for k, v in config.items() if k not in [
                 'casos_seleccionados', 'mostrar_proc_losas', 'mostrar_analisis_mat',
                 'mostrar_resolucion', 'mostrar_fuerzas_int', 'mostrar_resumen_max'
@@ -2324,14 +2235,12 @@ class PestañaReporte(QWidget):
 
         self.enviar_mensaje_statusbar.emit("Generando reporte configurado...", 0)
         self.reporte_texto.setText("Generando reporte, por favor espere...")
-        QApplication.processEvents() # Para que se muestre el mensaje
+        QApplication.processEvents() 
 
         try:
-            # Importar aquí para evitar dependencia circular si moviéramos las clases
             from generador_reporte import GeneradorReporte
             generador = GeneradorReporte(self.modelo)
-            
-            # Llamamos al nuevo método (que crearemos en el siguiente paso)
+        
             texto_reporte = generador.generar_reporte_personalizado(config)
             
             self.actualizar(texto_reporte) # Llama al método existente para mostrar el texto
@@ -2345,7 +2254,6 @@ class PestañaReporte(QWidget):
     def actualizar(self, texto):
         """Actualiza el contenido del QTextEdit y habilita/deshabilita el botón."""
         self.reporte_texto.setText(texto)
-        # Habilitar botón solo si hay resultados de cálculo en el modelo
         self.btn_configurar_generar.setEnabled(bool(self.modelo and self.modelo.resultados_calculo))
         if not (self.modelo and self.modelo.resultados_calculo):
              self.reporte_texto.setPlaceholderText("Realice un cálculo para poder generar un reporte...")
@@ -2385,7 +2293,6 @@ class PestañaDiseño(QWidget):
         self.pagina_columnas.actualizar(modelo)
 
 class PaginaVigas(QWidget):
-    # Señal para enviar mensajes a la barra de estado principal
     enviar_mensaje_statusbar = Signal(str, int)
 
     def __init__(self, modelo):
@@ -2396,8 +2303,6 @@ class PaginaVigas(QWidget):
         self.ultima_memoria_calculo = None 
 
         self._cache_colores_usuario = {}
-        
-        # Variables para interacción con gráfico (picking)
         self.click_annotation = None
         self.current_x = None
         self.current_y = None
@@ -2405,25 +2310,16 @@ class PaginaVigas(QWidget):
         self.current_envelope_max = None
         self.current_envelope_min = None
 
-        # === LAYOUT PRINCIPAL (HORIZONTAL) ===
-        # Divide la pantalla en: Entradas (Izquierda) | Resultados (Derecha)
         layout_principal = QHBoxLayout(self)
         
-        # --- COLUMNA IZQUIERDA: ENTRADAS Y CÁLCULO ---
         contenedor_izquierdo = QWidget()
-        # --- FIX 5: Ancho Flexible ---
-        # Permitimos que se encoja un poco o se estire, pero no demasiado
         contenedor_izquierdo.setMinimumWidth(380) 
         contenedor_izquierdo.setMaximumWidth(550)
-        # ---------------------------
         layout_izquierdo = QVBoxLayout(contenedor_izquierdo)
         layout_izquierdo.setContentsMargins(0, 0, 0, 0)
-        
-        # 1. Panel de Entradas (Scrollable para pantallas pequeñas)
         panel_entradas = self._crear_panel_entradas_viga()
         layout_izquierdo.addWidget(panel_entradas, stretch=1)
         
-        # 2. Botón Calcular (Estilo destacado)
         self.boton_calcular = QPushButton("Calcular Diseño")
         self.boton_calcular.setCursor(Qt.CursorShape.PointingHandCursor)
         self.boton_calcular.setMinimumHeight(50)
@@ -2444,21 +2340,17 @@ class PaginaVigas(QWidget):
         self.boton_calcular.clicked.connect(self._ejecutar_calculo_viga)
         layout_izquierdo.addWidget(self.boton_calcular)
 
-        # 3. Resultados Rápidos (Resumen numérico al pie)
         panel_resumen = self._crear_grupo_resultados_rapidos()
         layout_izquierdo.addWidget(panel_resumen)
 
-        # --- COLUMNA DERECHA: PESTAÑAS DE RESULTADOS ---
         self.tabs_derecha = QTabWidget()
         self.tabs_derecha.setStyleSheet("""
             QTabBar::tab { height: 30px; min-width: 120px; font-weight: bold; }
         """)
 
-        # Pestaña 1: Diagramas (Interactivo)
         self.tab_diagramas = self._crear_panel_diagramas()
         self.tabs_derecha.addTab(self.tab_diagramas, "Diagramas")
 
-        # Pestaña 2: Reporte de Cálculo (Memoria incrustada)
         self.tab_reporte = QWidget()
         layout_reporte = QVBoxLayout(self.tab_reporte)
         self.scroll_reporte = QScrollArea()
@@ -2477,17 +2369,13 @@ class PaginaVigas(QWidget):
         
         self.tabs_derecha.addTab(self.tab_reporte, "Reporte de Cálculo")
 
-        # Pestaña 3: Registro de Armado (Tabla manual)
         self.tab_armado = self._crear_panel_registro_armado()
         self.tabs_derecha.addTab(self.tab_armado, "Registro de Armado")
 
-        # Agregar columnas al layout principal
         layout_principal.addWidget(contenedor_izquierdo)
         layout_principal.addWidget(self.tabs_derecha)
 
-        self.setEnabled(False) # Se habilita cuando hay modelo cargado mediante actualizar()
-
-    # --- MÉTODOS DE CREACIÓN DE PANELES (UI) ---
+        self.setEnabled(False) 
 
     def _crear_panel_entradas_viga(self):
         """Crea el área de inputs con scroll."""
@@ -2512,7 +2400,6 @@ class PaginaVigas(QWidget):
             label.setStyleSheet("font-weight: bold; font-size: 10pt; margin-top: 15px; border-bottom: 2px solid #4CAF50; padding-bottom: 2px;")
             layout_formulario.addRow(label)
 
-        # Campos
         self.fc_input = QLineEdit("25"); self.fc_input.setPlaceholderText("MPa")
         self.fy_input = QLineEdit("420"); self.fy_input.setPlaceholderText("MPa")
         create_separator("1. Materiales")
@@ -2535,7 +2422,6 @@ class PaginaVigas(QWidget):
         
         self.diam_long_input = QComboBox()
         self.diam_est_corte_input = QComboBox()
-        # Usamos BARRAS_COMERCIALES importado en widgets_gui.py
         lista_diametros = [f"{d:g}" for d in sorted(BARRAS_COMERCIALES.keys())]
         self.diam_long_input.addItems(lista_diametros); self.diam_long_input.setCurrentText("16")
         self.diam_est_corte_input.addItems(lista_diametros); self.diam_est_corte_input.setCurrentText("8")
@@ -2544,8 +2430,7 @@ class PaginaVigas(QWidget):
         layout_formulario.addRow("Ø Barra Longitudinal [mm]:", self.diam_long_input)
         layout_formulario.addRow("Ø Estribo Corte [mm]:", self.diam_est_corte_input)
         
-        # Diagrama y Armado previo
-        diagrama_label = crear_diagrama_d() # Función global de widgets_gui.py
+        diagrama_label = crear_diagrama_d() 
         self.combo_armado_previo = QComboBox()
         
         layout_extra = QHBoxLayout()
@@ -2589,7 +2474,6 @@ class PaginaVigas(QWidget):
         panel = QWidget()
         layout = QVBoxLayout(panel)
         
-        # --- Controles Superiores ---
         grupo_controles = QGroupBox()
         grupo_controles.setStyleSheet("QGroupBox { border: none; }") 
         layout_controles = QGridLayout(grupo_controles)
@@ -2624,7 +2508,6 @@ class PaginaVigas(QWidget):
         layout_controles.addLayout(hbox_checks, 1, 2, 1, 4)
         layout.addWidget(grupo_controles)
 
-        # --- Controles de Búsqueda/Inspección ---
         layout_busqueda = QHBoxLayout()
         self.entrada_x = QLineEdit(); self.entrada_x.setPlaceholderText("X (m)"); self.entrada_x.setFixedWidth(60)
         self.btn_mostrar_valor = QPushButton("Ir a X")
@@ -2641,7 +2524,6 @@ class PaginaVigas(QWidget):
         layout_busqueda.addStretch()
         layout.addLayout(layout_busqueda)
 
-        # --- Lienzo Matplotlib ---
         contenedor_grafico = QWidget()
         contenedor_grafico.setStyleSheet("background-color: white; color: black;") 
         layout_grafico = QVBoxLayout(contenedor_grafico)
@@ -2652,7 +2534,6 @@ class PaginaVigas(QWidget):
         
         layout.addWidget(contenedor_grafico, stretch=1)
         
-        # Conexiones Diagramas
         self.combo_elementos.currentIndexChanged.connect(self.refrescar_diagrama)
         self.combo_combinaciones.currentIndexChanged.connect(self._actualizar_combo_casos_hipotesis)
         self.combo_casos_hipotesis.currentIndexChanged.connect(self.refrescar_diagrama)
@@ -2698,7 +2579,6 @@ class PaginaVigas(QWidget):
         l_entrada.addWidget(self.desde_armado_input, 1, 4)
         l_entrada.addWidget(self.hasta_armado_input, 1, 5)
         
-        # Stacked widget para cambiar entre opciones de Flexión (Pos) y Corte (Sep)
         self.stack_pos_sep = QStackedWidget()
         w_pos = QWidget(); l_pos = QHBoxLayout(w_pos); l_pos.setContentsMargins(0,0,0,0)
         l_pos.addWidget(QLabel("Posición:")); l_pos.addWidget(self.posicion_armado_combo)
@@ -2729,7 +2609,6 @@ class PaginaVigas(QWidget):
         hbox_btns.addWidget(self.btn_guardar_cambios_tabla_armado)
         layout.addLayout(hbox_btns)
         
-        # Conexiones internas
         self.tipo_armado_combo.currentIndexChanged.connect(lambda i: self.stack_pos_sep.setCurrentIndex(i))
         self.btn_guardar_armado.clicked.connect(self._guardar_armado_manual)
         self.btn_eliminar_armado.clicked.connect(self._eliminar_armado_seleccionado)
@@ -2737,8 +2616,6 @@ class PaginaVigas(QWidget):
         self.btn_guardar_cambios_tabla_armado.clicked.connect(self._guardar_cambios_de_tabla_armado)
         
         return widget
-
-    # --- LÓGICA DE CÁLCULO Y REPORTE INCRUSTADO ---
 
     def _ejecutar_calculo_viga(self):
         """Ejecuta el cálculo usando el motor y actualiza la UI."""
@@ -2748,7 +2625,6 @@ class PaginaVigas(QWidget):
         QApplication.processEvents()
 
         try:
-            # 1. Recoger datos
             f_c = float(self.fc_input.text())
             f_y = float(self.fy_input.text())
             mu_knm = float(self.mu_input.text())
@@ -2761,8 +2637,6 @@ class PaginaVigas(QWidget):
 
             datos_previos = self.combo_armado_previo.currentData()
             area_previa_cm2 = datos_previos['area_cm2'] if datos_previos else 0.0
-            
-            # 2. Llamar al motor (vigas.py)
             reporte = vigas.realizar_diseno_viga(
                 f_c, f_y, mu_knm, Vu_kN, b_cm, h_cm, r_min_cm, 
                 diametro_longitudinal, 
@@ -2771,7 +2645,6 @@ class PaginaVigas(QWidget):
                 armado_previo_info=datos_previos
             )
 
-            # 3. Actualizar Resumen Rápido (Izquierda)
             resultados = reporte.get('resultados', {})
             self.resultado_as_traccion.setText(f"{resultados.get('As_traccion_cm2', 0):.2f} cm²")
             self.resultado_as_compresion.setText(f"{resultados.get('As_compresion_cm2', 0):.2f} cm²")
@@ -2782,11 +2655,9 @@ class PaginaVigas(QWidget):
             else:
                 self.resultado_corte.setText(f"{separacion}")
 
-            # 4. Actualizar Pestaña de Reporte (Derecha)
             self._poblar_reporte_incrustado(reporte['memoria'])
             
-            # Cambiar a la pestaña de reporte automáticamente
-            self.tabs_derecha.setCurrentIndex(1) # Index 1 es "Reporte"
+            self.tabs_derecha.setCurrentIndex(1)
 
             id_elem_actual = self.combo_elementos.currentText()
             self.enviar_mensaje_statusbar.emit(f"Diseño para viga {id_elem_actual} completado.", 5000)
@@ -2802,22 +2673,19 @@ class PaginaVigas(QWidget):
 
     def _poblar_reporte_incrustado(self, lineas_memoria):
         """Limpia y rellena la pestaña de reporte con el contenido HTML/LaTeX."""
-        # Limpiar layout anterior
         while self.layout_contenido_reporte.count():
             child = self.layout_contenido_reporte.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
-        
-        # Añadir nuevas líneas
+    
         for linea in lineas_memoria:
             if linea.startswith('$'):
-                widget_linea = render_latex(linea) # Usa la función global de widgets_gui.py
+                widget_linea = render_latex(linea) 
             else:
                 widget_linea = QLabel(linea)
                 widget_linea.setWordWrap(True)
                 widget_linea.setTextFormat(Qt.TextFormat.RichText)
                 widget_linea.setStyleSheet("font-size: 10pt; padding: 2px;")
-                # Estilo extra para títulos dentro del reporte
                 if "<h2>" in linea or "<h3>" in linea:
                     widget_linea.setStyleSheet("color: #2E7D32; margin-top: 10px; margin-bottom: 5px;")
                 elif "ERROR" in linea or "ALERTA" in linea:
@@ -2825,9 +2693,7 @@ class PaginaVigas(QWidget):
             
             self.layout_contenido_reporte.addWidget(widget_linea)
         
-        self.layout_contenido_reporte.addStretch() # Empujar todo arriba
-
-    # --- MÉTODOS DE LÓGICA EXISTENTE (CONSERVADOS) ---
+        self.layout_contenido_reporte.addStretch() 
 
     def actualizar(self, modelo):
         """Actualiza la página con nuevos resultados, poblando los combos de selección."""
@@ -2843,7 +2709,6 @@ class PaginaVigas(QWidget):
         
         self.combo_elementos.clear()
         ids_vigas = []
-        # Identificar elementos horizontales (vigas)
         for id_elem, (ni, nj, _) in self.modelo.elementos.items():
             z1 = self.modelo.nodos[ni][2]
             z2 = self.modelo.nodos[nj][2]
@@ -2905,7 +2770,6 @@ class PaginaVigas(QWidget):
 
     def refrescar_diagrama(self):
         """Redibuja el diagrama de esfuerzos en el widget Matplotlib."""
-        # Limpiar anotaciones previas
         for ann in self.search_annotations: 
             try: ann.remove()
             except Exception: pass
@@ -2936,8 +2800,6 @@ class PaginaVigas(QWidget):
         
         ax = self.grafico_widget.ejes
         ax.clear()
-
-        # Estilos Modo Claro (Coherente con la nueva UI)
         color_fondo = 'white'; color_texto = 'black'
         ax.set_facecolor(color_fondo); self.grafico_widget.figura.set_facecolor(color_fondo)
         ax.tick_params(axis='both', colors=color_texto)
@@ -2960,8 +2822,6 @@ class PaginaVigas(QWidget):
             ax.set_title("No hay resultados de cálculo válidos.")
             self.grafico_widget.lienzo.draw()
             return 
-
-        # Obtener un caso base para inicializar x
         primer_combo = claves_combos_validas[0]
         primer_caso = list(self.modelo.resultados_calculo[primer_combo].keys())[0]
         resultados_base = self.modelo.resultados_calculo[primer_combo][primer_caso]
@@ -2977,7 +2837,6 @@ class PaginaVigas(QWidget):
             
             if not lista_casos: self.grafico_widget.lienzo.draw(); return
 
-            # Unificación de puntos x para envolventes correctas
             diagramas_raw = []; todos_los_x = set()
             x_base_linspace = np.linspace(0, longitud, PUNTOS_DIAGRAMA)
             for x_val in x_base_linspace: todos_los_x.add(x_val)
@@ -3067,7 +2926,6 @@ class PaginaVigas(QWidget):
                 ax.scatter(x[idx_min], y_min, color='magenta', zorder=4, s=30)
                 ax.text(x[idx_min], y_min, f" {self._format_value(y_min)}", color='magenta', ha='center', va='top')
 
-        # Visualizar Armado sobre el diagrama
         if self.check_mostrar_armado.isChecked():  
             lista_armados = self.modelo.armados_diseno.get(id_elem, [])
             if lista_armados:
@@ -3078,32 +2936,26 @@ class PaginaVigas(QWidget):
                 rango_y = y_max - y_min
                 offset_vertical = rango_y * 0.05 
 
-                # Armados superiores
                 nivel_y_actual = y_max - offset_vertical * 1.5
                 for armado in armados_superiores:
                     x_ini, x_fin = armado['desde'], armado['hasta']
                     texto_armado = f"{armado['cantidad']}Ø{armado['diametro']}"
                     
-                    # Línea roja un poco más oscura para contraste (#D32F2F)
                     ax.plot([x_ini, x_fin], [nivel_y_actual, nivel_y_actual], color='#D32F2F', linewidth=2.5, solid_capstyle='butt', zorder=20)
                     
-                    # Etiqueta embellecida: Texto negro, fondo blanco redondeado con borde rojo
                     ax.text((x_ini + x_fin) / 2, nivel_y_actual, texto_armado, 
                             color='black', ha='center', va='bottom', fontsize=9, weight='bold', zorder=21, 
                             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#D32F2F", lw=1.5, alpha=0.9))
                     
                     nivel_y_actual -= offset_vertical
 
-                # Armados inferiores
                 nivel_y_actual = y_min + offset_vertical * 1.5 
                 for armado in armados_inferiores:
                     x_ini, x_fin = armado['desde'], armado['hasta']
                     texto_armado = f"{armado['cantidad']}Ø{armado['diametro']}"
                     
-                    # Línea roja
                     ax.plot([x_ini, x_fin], [nivel_y_actual, nivel_y_actual], color='#D32F2F', linewidth=2.5, solid_capstyle='butt', zorder=20)
                     
-                    # Etiqueta embellecida
                     ax.text((x_ini + x_fin) / 2, nivel_y_actual, texto_armado, 
                             color='black', ha='center', va='top', fontsize=9, weight='bold', zorder=21, 
                             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="#D32F2F", lw=1.5, alpha=0.9))
@@ -3272,7 +3124,6 @@ class ColumnCanvas(QWidget):
         super().__init__(parent)
         self.setMinimumHeight(300)
         self.column_data = {}
-        # Forzamos estilo blanco para este widget específico
         self.setStyleSheet("background-color: white; border: 1px solid #ccc;")
 
     def update_data(self, data):
@@ -3283,7 +3134,6 @@ class ColumnCanvas(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
-        # Fondo blanco forzado (Hardcoded Light Mode)
         painter.fillRect(self.rect(), Qt.white)
         
         if not self.column_data or self.column_data.get('b', 0) == 0: return
@@ -3291,7 +3141,6 @@ class ColumnCanvas(QWidget):
         b, h = self.column_data['b'], self.column_data['h']
         eje = self.column_data.get('eje', 'fuerte')
         
-        # Escalar para ajustar al widget con márgenes
         margin = 40
         canvas_w, canvas_h = self.width() - 2*margin, self.height() - 2*margin
         scale = min(canvas_w / b, canvas_h / h)
@@ -3357,37 +3206,23 @@ class PaginaColumnas(QWidget):
         self.generador_diagramas = None
         self.puntos_demanda = [] 
         self.ventana_3d = None
-        
-        # Variables de cálculo
         self.puntos_nom_fuerte = []
         self.puntos_dis_fuerte = []
         self.puntos_nom_debil = []
         self.puntos_dis_debil = []
-
-        # --- LAYOUT PRINCIPAL ---
         layout_principal = QHBoxLayout(self)
-
-        # === PANEL IZQUIERDO: DEFINICIÓN ===
         contenedor_izq = QWidget()
-        # --- FIX 6: Ancho Flexible ---
         contenedor_izq.setMinimumWidth(350)
         contenedor_izq.setMaximumWidth(500)
-        # -----------------------------
         layout_izq = QVBoxLayout(contenedor_izq)
         layout_izq.setContentsMargins(0, 0, 0, 0)
-
-        # --- INICIO FIX SCROLL ---
-        # Creamos un ScrollArea para que los inputs y el canvas no rompan la pantalla
         scroll_izq = QScrollArea()
         scroll_izq.setWidgetResizable(True)
         scroll_izq.setFrameShape(QFrame.Shape.NoFrame)
-        
-        # Widget contenedor para el contenido del scroll
         widget_contenido_scroll = QWidget()
         layout_contenido_scroll = QVBoxLayout(widget_contenido_scroll)
-        layout_contenido_scroll.setContentsMargins(0,0,5,0) # Margen derecho para la barra
+        layout_contenido_scroll.setContentsMargins(0,0,5,0) 
 
-        # Movemos los controles DENTRO del widget_contenido_scroll
         self.tabs_inputs = QTabWidget()
         self._crear_tabs_inputs()
         layout_contenido_scroll.addWidget(self.tabs_inputs)
@@ -3395,19 +3230,14 @@ class PaginaColumnas(QWidget):
         self.canvas_columna = ColumnCanvas()
         layout_contenido_scroll.addWidget(self.canvas_columna)
         
-        # Añadimos un stretch al final para que los controles suban
         layout_contenido_scroll.addStretch()
 
-        # Asignamos el widget al scroll
         scroll_izq.setWidget(widget_contenido_scroll)
         
-        # Añadimos el scroll al layout izquierdo principal
         layout_izq.addWidget(scroll_izq)
-        # --- FIN FIX SCROLL ---
         
         layout_principal.addWidget(contenedor_izq)
 
-        # === PANEL DERECHO: EVALUACIÓN ===
         contenedor_der = QWidget()
         layout_der = QVBoxLayout(contenedor_der)
         layout_der.setContentsMargins(0, 0, 0, 0)
@@ -3443,7 +3273,6 @@ class PaginaColumnas(QWidget):
         self.tab_interaccion = QWidget()
         l_inter = QVBoxLayout(self.tab_interaccion)
         
-        # Barra de opciones superior (Nuevo)
         hbox_opciones_grafico = QHBoxLayout()
         self.check_mostrar_valores = QCheckBox("Mostrar valores extremos en el diagrama")
         self.check_mostrar_valores.setChecked(True) # Activado por defecto
@@ -3451,7 +3280,6 @@ class PaginaColumnas(QWidget):
         hbox_opciones_grafico.addStretch()
         l_inter.addLayout(hbox_opciones_grafico)
         
-        # Contenedor Blanco para Matplotlib
         contenedor_plot_inter = QWidget()
         contenedor_plot_inter.setStyleSheet("background-color: white; color: black; border-radius: 4px;")
         l_plot_inter = QVBoxLayout(contenedor_plot_inter)
@@ -3568,7 +3396,7 @@ class PaginaColumnas(QWidget):
         contenedor_graf.setStyleSheet("background-color: white; color: black;")
         l_graf = QVBoxLayout(contenedor_graf); l_graf.setContentsMargins(0,0,0,0)
         
-        self.grafico_vortex = MatplotlibWidget() # Reusamos la clase existente
+        self.grafico_vortex = MatplotlibWidget() 
         l_graf.addWidget(self.grafico_vortex)
         layout.addWidget(contenedor_graf)
         
@@ -3597,10 +3425,7 @@ class PaginaColumnas(QWidget):
         self.combo_casos_vortex.currentIndexChanged.connect(self._refrescar_diagrama_vortex)
         self.combo_efecto_vortex.currentIndexChanged.connect(self._refrescar_diagrama_vortex)
         
-        # --- NUEVO: Checkbox de valores extremos ---
         self.check_mostrar_valores.toggled.connect(self._actualizar_grafico_interaccion)
-
-    # --- LÓGICA DE ACTUALIZACIÓN Y CÁLCULO ---
 
     def actualizar(self, modelo):
         """Se llama al cargar/calcular el modelo principal."""
@@ -3627,18 +3452,15 @@ class PaginaColumnas(QWidget):
             self.combo_elementos_vortex.addItem("N/A")
 
         # Poblar Combos de Carga
-        # --- CORRECCIÓN: Bloquear señales para evitar actualizaciones prematuras
         self.combo_combos_vortex.blockSignals(True) 
         self.combo_combos_vortex.clear()
         
         if tiene_res:
             claves = [k for k in modelo.resultados_calculo.keys() if k != 'reporte_global_data']
             self.combo_combos_vortex.addItems(claves)
-            # Actualizamos los casos manualmente una vez al final
             self._actualizar_casos_vortex()
             
         self.combo_combos_vortex.blockSignals(False)
-        # -------------------------------------------------------------------
 
     def _recolectar_datos_seccion(self):
         try:
@@ -3685,7 +3507,7 @@ class PaginaColumnas(QWidget):
         
         self._actualizar_grafico_interaccion()
         self.enviar_mensaje_statusbar.emit("Diagramas calculados.", 3000)
-        self.tabs_resultados.setCurrentIndex(0) # Ir a pestaña interacción
+        self.tabs_resultados.setCurrentIndex(0) 
 
     def _actualizar_grafico_interaccion(self):
         """Dibuja el diagrama de interacción Pn-Mn replicando el estilo original."""
@@ -3779,7 +3601,6 @@ class PaginaColumnas(QWidget):
             color_pt = 'green' if estado == 'Seguro' else 'red'
             
             self.ax_interaccion.plot(mu, pu, marker=marcador, color=color_pt, markersize=8, markeredgecolor='black')
-            # Etiquetas de demanda simples (sin caja para no saturar)
             self.ax_interaccion.text(mu + 1, pu + 1, pt['label'], fontsize=8, color='black', alpha=0.7)
 
         # 4. Etiquetas y Formato
@@ -3804,13 +3625,13 @@ class PaginaColumnas(QWidget):
         if not res_globales: return
 
         count_added = 0
-        self.puntos_demanda.clear() # Limpiar previos
+        self.puntos_demanda.clear() 
 
         # Recorrer todas las combinaciones y casos
         for nombre_combo, subcasos in res_globales.items():
             if nombre_combo == 'reporte_global_data': continue
             for sub_caso, res in subcasos.items():
-                f_int = res['fuerzas_internas'].get(id_elem) # [Px_i, ..., Mz_i, Px_j, ..., Mz_j]
+                f_int = res['fuerzas_internas'].get(id_elem) 
                 if f_int is None: continue
                 
                 # Extraer esfuerzos en extremos (Nodos i y j)
@@ -3829,19 +3650,15 @@ class PaginaColumnas(QWidget):
                 M_res_i = math.sqrt(Muy_i**2 + Muz_i**2)
                 M_res_j = math.sqrt(Muy_j**2 + Muz_j**2)
                 
-                # --- CORRECCIÓN: APLICAR VALOR ABSOLUTO ---
                 if M_res_i > M_res_j:
                     # Aplicamos abs() a todo para importar solo magnitudes positivas
                     Pu, Mux, Muy, loc = abs(Pu_i), abs(Muz_i), abs(Muy_i), "Top"
                 else:
                     Pu, Mux, Muy, loc = abs(Pu_j), abs(Muz_j), abs(Muy_j), "Bot"
-                # ------------------------------------------
                 
                 # Verificar contra diagrama si existe
                 estado, ratio = "N/A", 0.0
                 if self.puntos_dis_fuerte:
-                    # NOTA: Mux es momento alrededor del eje fuerte (generalmente X o Z local)
-                    # Aquí asumo Mz local = Eje Fuerte, My local = Eje Débil para columnas estándar
                     punto_dict = {'p': Pu, 'mx': Mux, 'my': Muy}
                     estado, ratio = verificar_punto_numericamente(punto_dict, self.puntos_dis_fuerte, self.puntos_dis_debil)
 
@@ -3853,7 +3670,7 @@ class PaginaColumnas(QWidget):
                 count_added += 1
         
         self._actualizar_tabla_puntos()
-        self._actualizar_grafico_interaccion() # Refrescar plot con nuevos puntos
+        self._actualizar_grafico_interaccion()
         self.enviar_mensaje_statusbar.emit(f"Importados {count_added} puntos de carga del análisis.", 4000)
 
     def _actualizar_tabla_puntos(self):
@@ -3895,7 +3712,7 @@ class PaginaColumnas(QWidget):
         self._actualizar_tabla_puntos()
         self._actualizar_grafico_interaccion()
 
-    # --- DIAGRAMAS VORTEX (Lógica Espejo de Vigas) ---
+    # --- DIAGRAMAS VORTEX ---
     def _actualizar_casos_vortex(self):
         self.combo_casos_vortex.clear()
         combo = self.combo_combos_vortex.currentText()
@@ -3917,14 +3734,11 @@ class PaginaColumnas(QWidget):
         efecto = self.combo_efecto_vortex.currentText()
         
         if not (combo and caso): return
-        
-        # Validación de claves para evitar KeyError
         if combo not in self.modelo.resultados_calculo: return
         if caso not in self.modelo.resultados_calculo[combo]: return
             
         res = self.modelo.resultados_calculo[combo][caso]
         
-        # x = Altura/Longitud (0 a L), y = Valor del Efecto
         x_altura, y_valor = self.generador_diagramas.get_diagrama(id_elem, res, efecto, n_puntos=50)
         
         # --- Preparación del Gráfico ---
@@ -3966,7 +3780,6 @@ class PaginaColumnas(QWidget):
         val_ini, val_fin = y_valor[0], y_valor[-1]
         ax.scatter([val_ini, val_fin], [0, longitud], color='red', zorder=5, s=40)
 
-        # Helper para formato (inline para no depender de métodos externos si faltan)
         def fmt(val):
             return f"{val:.2f}" if abs(val) > 1e-3 else "0.00"
 
@@ -3976,10 +3789,6 @@ class PaginaColumnas(QWidget):
         offset_txt_x = rango_x * 0.05 # Margen horizontal para textos
         
         # --- Etiquetas de Nodos (Ni, Nj) y Elemento ---
-        # En vigas están debajo del eje X. En columnas las pondremos a la IZQUIERDA del eje Y (visual)
-        # o en los extremos verticales fuera de la barra para mayor claridad.
-        
-        # Opción más limpia: Ni abajo del todo, Nj arriba del todo (Fuera del diagrama)
         y_lims = ax.get_ylim()
         offset_vert = longitud * 0.05
         
@@ -4007,7 +3816,6 @@ class PaginaColumnas(QWidget):
         val_max = y_valor[idx_max]
         h_max = x_altura[idx_max]
         
-        # Solo etiquetar si no es uno de los extremos (para no solapar) y es relevante
         if 0 < idx_max < len(y_valor) - 1 and abs(val_max) > 1e-3:
             ax.scatter(val_max, h_max, color='black', zorder=4, s=25)
             ax.text(val_max, h_max, f" {fmt(val_max)}", color='black', ha='left', va='bottom', fontsize=8)
@@ -4043,8 +3851,6 @@ class PaginaColumnas(QWidget):
 
     def _calcular_diseno_corte(self):
         if not MODULES_COLUMNAS_LOADED: return
-        # ... Lógica similar a Vigas, imprime en self.layout_reporte_contenido ...
-        # (Limpiar reporte previo)
         while self.layout_reporte_contenido.count():
             child = self.layout_reporte_contenido.takeAt(0)
             if child.widget(): child.widget().deleteLater()
@@ -4054,8 +3860,6 @@ class PaginaColumnas(QWidget):
             vu = float(self.vu_input.text())
             nu = float(self.nu_input.text())
             
-            # Ajuste de unidades para el motor (cm, kN)
-            # El motor espera b_cm, h_cm. datos tiene mm.
             res = realizar_diseno_columna_corte(
                 datos['fc'], datos['fy'], vu, nu, 
                 datos['b']/10, datos['h']/10, datos['rec']/10, 
