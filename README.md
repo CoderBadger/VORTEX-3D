@@ -80,6 +80,21 @@ Si estás buscando un tema de tesis, aquí hay algunas áreas en las que VORTEX 
 
 ---
 
+## 🤝 Cómo Contribuir (Flujo de Trabajo)
+
+¡Las contribuciones de estudiantes, ingenieros y desarrolladores son totalmente bienvenidas! Para mantener la estabilidad del programa y asegurar que la matemática sea correcta, nuestra rama `main` está protegida. Nadie puede subir código directamente a ella. 
+
+Si deseas aportar al proyecto (ya sea resolviendo un bug o añadiendo algo de la hoja de ruta), sigue estos pasos:
+
+1. **Haz un "Fork"** de este repositorio hacia tu propia cuenta de GitHub (botón arriba a la derecha).
+2. **Clona** tu Fork en tu computadora y crea una nueva rama para trabajar en tu función: git checkout -b nombre-de-tu-nueva-funcion
+3. **Programa, haz commit y sube (push)** los cambios a la rama de tu propio repositorio.
+4. **Abre un Pull Request (PR):** Entra a la página original de VORTEX 3D en GitHub y abre un Pull Request solicitando fusionar tu nueva rama con nuestra rama `main`.
+5. **Revisión de Código:** Todos los cambios pasan por una revisión humana. Es posible que te dejemos comentarios, sugerencias o dudas sobre el código. **Nota importante:** El sistema bloqueará la fusión hasta que se apruebe el PR y **todas las conversaciones y comentarios estén marcados como resueltos**.
+
+Una vez que todo esté en orden, ¡nosotros mismos haremos el Merge y tu código formará parte oficial de VORTEX 3D!
+
+---
 
 ## ⚖️ Licencia y Aviso Legal
 
