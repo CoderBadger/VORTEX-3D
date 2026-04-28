@@ -221,6 +221,7 @@ class GLViewer(QOpenGLWidget):
             modelview, projection, viewport = None, None, None
             
         if self.buffers_inicializados:
+            self.makeCurrent()
             self._renderizar_buffers() 
         
         self.render_text_labels(modelview, projection, viewport)

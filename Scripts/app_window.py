@@ -791,6 +791,9 @@ class VentanaPrincipalVortex(QMainWindow):
         if isinstance(rutas, str):
             rutas = rutas.split(";") if rutas else []
         elif not isinstance(rutas, list):
+            if rutas is None:
+                rutas = []
+        else:
             rutas = list(rutas)
             
         self.recent_files_actions.clear()
