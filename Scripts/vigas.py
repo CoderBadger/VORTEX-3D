@@ -12,7 +12,7 @@ específico de los elementos tipo viga del modelo espacial.
 # Este programa es software libre: puedes redistribuirlo y/o modificarlo
 # bajo los términos de la Licencia Pública General GNU (GNU GPL) publicada
 # por la Free Software Foundation, ya sea la versión 3 de la Licencia, o
-# cualquier versión posterior.
+# (a tu elección) cualquier versión posterior.
 #
 # Este programa se distribuye con la esperanza de que sea útil,
 # pero SIN GARANTÍA ALGUNA; ni siquiera la garantía implícita
@@ -28,7 +28,7 @@ específico de los elementos tipo viga del modelo espacial.
 import math
 
 BARRAS_COMERCIALES = { 
-    6.0: 28.0, 8.0: 50.0, 9.5: 70.9, 12.0: 113.0, 16.0: 201.0, 
+    6.0: 28.0, 8.0: 50.0, 9.5: 70.9, 10.0: 78.5, 12.0: 113.0, 16.0: 201.0, 
     20.0: 314.0, 25.0: 491.0, 32.0: 804.0 
 }
 
@@ -48,17 +48,26 @@ def _calcular_diseno_flexion(d, Mu, phi, gamma, f_c, b, f_y, Ey, r_min, d_est, d
         if termino_raiz < 0:
             resultados['error'] = "Sección insuficiente para el momento solicitado (raíz negativa)"
             return resultados
-        As_req = (gamma * f_c * b / f_y) * (d - math.sqrt(termino_raiz))
+        
+        # --- MODIFICACIÓN: Cálculo en dos pasos ---
+        # Paso A: Calculamos la profundidad del bloque de compresión (a)
+        a_req = d - math.sqrt(termino_raiz)
+        
+        # Paso B: Calculamos el área de acero en función de 'a'
+        As_req = (gamma * f_c * a_req * b) / f_y
+        
     except (ValueError, ZeroDivisionError):
         resultados['error'] = "Sección insuficiente o datos de entrada inválidos"
         return resultados
+    
+    # Guardamos ambos resultados en el diccionario para la memoria
+    resultados['a_req_mm'] = a_req 
     resultados['As_requerido_mm2'] = As_req
 
-    # 2. Acero mínimo
-    As_min_1 = (0.25 * math.sqrt(f_c) / f_y) * b * d
-    As_min_2 = (1.4 / f_y) * b * d
-    As_min = max(As_min_1, As_min_2)
-    resultados.update({'As_min_mm2': As_min, 'As_min_1_mm2': As_min_1, 'As_min_2_mm2': As_min_2})
+    # 2. Acero mínimo 
+    # Referencia: NB 1225001 Sección 9.6.1.2
+    As_min = (1/4) * (math.sqrt(f_c) / f_y) * b * d
+    resultados.update({'As_min_mm2': As_min})
 
     # 3. Acero total a colocar (comparando requerido vs. mínimo)
     As_total_final = max(As_req, As_min)
@@ -70,10 +79,21 @@ def _calcular_diseno_flexion(d, Mu, phi, gamma, f_c, b, f_y, Ey, r_min, d_est, d
     else: beta1 = 0.65
     
     ecu = 0.003
-    c_max = (ecu / (ecu + 0.005)) * d
+    ety = f_y / Ey  # Deformación de fluencia
+    et_limite = ety + ecu  # Límite de deformación controlada por tracción
+    
+    # Cálculo de cuantía máxima y área de acero
+    rho_max = gamma * beta1 * (f_c / f_y) * (ecu / (ecu + et_limite))
+    As_max = rho_max * b * d
+    
+    # Conservamos c_max y a_max para la lógica de diseño doblemente reforzado
+    c_max = (ecu / (ecu + et_limite)) * d
     a_max = beta1 * c_max
-    As_max = (gamma * f_c * a_max * b) / f_y
-    resultados.update({'beta1': beta1, 'c_max_mm': c_max, 'a_max_mm': a_max, 'As_max_mm2': As_max})
+    
+    resultados.update({
+        'beta1': beta1, 'ecu': ecu, 'ety': ety, 'et_limite': et_limite,
+        'rho_max': rho_max, 'c_max_mm': c_max, 'a_max_mm': a_max, 'As_max_mm2': As_max
+    })
     
     # 5. Decisión de Diseño: Simple o Doblemente Reforzado
     if As_total_final <= As_max:
@@ -129,7 +149,7 @@ def _calcular_selector_barras(As_a_proveer_mm2, As_compresion_mm2, As_min_mm2, b
     """
     Calcula las opciones de armado comercial válidas.
     """
-    opciones = {'traccion': [], 'compresion': [], 'perchas': []}
+    opciones = {'traccion': [], 'compresion': []}
     
     num_barras_previas = armado_previo_info.get('cantidad', 0) if armado_previo_info else 0
     diametro_previo = armado_previo_info.get('diametro', 0) if armado_previo_info else 0
@@ -163,24 +183,13 @@ def _calcular_selector_barras(As_a_proveer_mm2, As_compresion_mm2, As_min_mm2, b
                         'cantidad': num_barras, 'diametro': diametro, 
                         'area_provista_mm2': num_barras * area_barra_mm2
                     })
-    else: # Perchas
-        As_perchas_req_mm2 = 0.3 * As_min_mm2
-        for diametro, area_barra_mm2 in BARRAS_COMERCIALES.items():
-            num_barras = math.ceil(As_perchas_req_mm2 / area_barra_mm2)
-            if num_barras == 2:
-                ancho_requerido = (2 * r_min) + (2 * d_est) + (2 * diametro) + max(25, diametro)
-                if ancho_requerido <= b:
-                    opciones['perchas'].append({
-                        'cantidad': 2, 'diametro': diametro, 
-                        'area_provista_mm2': 2 * area_barra_mm2,
-                        'area_requerida_mm2': As_perchas_req_mm2
-                    })
-
+    
     return opciones
 
 def _calcular_diseno_corte(d, Vu, f_c, b, f_y, d_est):
     """
     Realiza el cálculo de diseño a corte y devuelve un diccionario con resultados numéricos.
+    AHORA CALCULA SIEMPRE LOS LÍMITES NORMATIVOS.
     """
     resultados = {'error': None}
     
@@ -193,48 +202,71 @@ def _calcular_diseno_corte(d, Vu, f_c, b, f_y, d_est):
     fy_corte = min(f_y, 420)
     phi_corte = 0.75
     
+    # Resistencia del hormigón
     Vc = (1/6) * math.sqrt(f_c) * b * d
     phi_Vc = phi_corte * Vc
     resultados.update({'Vc_N': Vc, 'phi_Vc_N': phi_Vc, 'fy_corte_MPa': fy_corte})
 
+    Av = 2 * area_barra_estribo
+    resultados['Av_mm2'] = Av
+
+    # ====================================================================
+    # CALCULAR SIEMPRE LÍMITES MÁXIMOS POR NORMA (ACI 318 / NB 1225001)
+    # ====================================================================
+    # 1. Separación máxima por refuerzo mínimo (Sec. 9.6.3.3)
+    s_max_a = (Av * fy_corte) / ((1/16) * math.sqrt(f_c) * b)
+    s_max_b = (Av * fy_corte) / (0.35 * b)
+    s_max_ref_min = min(s_max_a, s_max_b)
+
+    # 2. Separación máxima por magnitud del cortante (Sec. 9.7.6.2.2)
+    Vs_limite_tabla = (1/3) * math.sqrt(f_c) * b * d
+    Vs_max_limite = (2/3) * math.sqrt(f_c) * b * d
+    resultados.update({'Vs_limite_tabla_N': Vs_limite_tabla, 'Vs_max_limite_N': Vs_max_limite})
+
+    # ====================================================================
+    # EVALUACIÓN DEL ESFUERZO SOLICITANTE Vs
+    # ====================================================================
     if Vu <= 0.5 * phi_Vc:
         resultados['requiere_estribos_calculo'] = False
-        resultados['separacion_final_mm'] = "Máx. por norma" # Placeholder
+        Vs = 0  # El acero no necesita aportar resistencia teórica
+        s_calculado = float('inf') # Ignoramos el s_calculado
     else:
         resultados['requiere_estribos_calculo'] = True
         Vs = (Vu - phi_Vc) / phi_corte
-        if Vs < 0: Vs = 0
         
-        Vs_max_limite = (2/3) * math.sqrt(f_c) * b * d
-        resultados.update({'Vs_N': Vs, 'Vs_max_limite_N': Vs_max_limite})
-
         if Vs > Vs_max_limite:
             resultados['error'] = "Sección de hormigón insuficiente para resistir el cortante (Vs > Vs,max)"
             return resultados
 
-        Av = 2 * area_barra_estribo
         s_calculado = (Av * fy_corte * d) / Vs if Vs > 1e-6 else float('inf')
-        
-        s_max_a = (Av * fy_corte) / (0.062 * math.sqrt(f_c) * b)
-        s_max_b = (Av * fy_corte) / (0.35 * b)
-        s_max_ref_min = min(s_max_a, s_max_b)
 
-        Vs_limite_tabla = (1/3) * math.sqrt(f_c) * b * d
-        if Vs <= Vs_limite_tabla: 
-            s_max_por_magnitud_vs = min(d / 2, 600)
-        else: 
-            s_max_por_magnitud_vs = min(d / 4, 300)
-        
+    resultados.update({'Vs_N': Vs, 's_calculado_mm': s_calculado})
+
+    # Como ya tenemos Vs (sea 0 o el calculado), definimos el límite de separación
+    if Vs <= Vs_limite_tabla: 
+        s_max_por_magnitud_vs = min(d / 2, 600)
+    else: 
+        s_max_por_magnitud_vs = min(d / 4, 300)
+    
+    # ====================================================================
+    # DECISIÓN FINAL
+    # ====================================================================
+    if resultados['requiere_estribos_calculo']:
         separacion_final = min(s_calculado, s_max_ref_min, s_max_por_magnitud_vs)
-        
-        resultados.update({
-            'Av_mm2': Av, 's_calculado_mm': s_calculado,
-            's_max_a_mm': s_max_a, 's_max_b_mm': s_max_b,
-            's_max_ref_min_mm': s_max_ref_min,
-            'Vs_limite_tabla_N': Vs_limite_tabla,
-            's_max_por_magnitud_vs_mm': s_max_por_magnitud_vs,
-            'separacion_final_mm': separacion_final
-        })
+    else:
+        # Solo consideramos los límites de norma
+        separacion_final = min(s_max_ref_min, s_max_por_magnitud_vs)
+    
+    # Añadimos un redondeo constructivo útil a múltiplos de 10mm (ej: 184mm -> 180mm)
+    separacion_final_constructiva = math.floor(separacion_final / 10) * 10
+
+    resultados.update({
+        's_max_a_mm': s_max_a, 's_max_b_mm': s_max_b,
+        's_max_ref_min_mm': s_max_ref_min,
+        's_max_por_magnitud_vs_mm': s_max_por_magnitud_vs,
+        'separacion_final_mm': separacion_final,
+        'separacion_final_constructiva_mm': separacion_final_constructiva
+    })
         
     return resultados
 
@@ -253,31 +285,44 @@ def _generar_memoria_flexion(d_in, flex_res, As_previo_mm2):
     
     # Desempaquetamos los resultados del cálculo
     As_req_cm2 = flex_res['As_requerido_mm2'] / 100
+    a_req_mm = flex_res['a_req_mm'] 
     As_min_cm2 = flex_res['As_min_mm2'] / 100
-    As_min_1_cm2 = flex_res['As_min_1_mm2'] / 100
-    As_min_2_cm2 = flex_res['As_min_2_mm2'] / 100
     As_max_cm2 = flex_res['As_max_mm2'] / 100
 
+    # Desempaquetamos los resultados del cálculo
+    As_req_cm2 = flex_res['As_requerido_mm2'] / 100
+    a_req_mm = flex_res['a_req_mm'] # <-- Nueva variable extraída
+    As_min_cm2 = flex_res['As_min_mm2'] / 100
+    # ... (el resto del desempaquetado queda igual) ...
+
     memoria.append("<h3>MÓDULO 2: DISEÑO A FLEXIÓN</h3>")
-    memoria.append("<b>1. Área de Acero Total Requerida ($A_{s,tot}$)</b>")
-    memoria.append(f"$A_s = \\frac{{0.85 f'_c b}}{{f_y}} \\left(d - \\sqrt{{d^2 - \\frac{{2 M_u}}{{\\phi \\cdot 0.85 f'_c b}}}}\\right)$")
-    memoria.append(f"$A_s = \\frac{{0.85({f_c})({b})}}{{{f_y}}} \\left({d:.1f} - \\sqrt{{{d:.1f}^2 - \\frac{{2({Mu:.0f})}}{{{phi}(0.85)({f_c})({b})}}}}\\right)$")
-    memoria.append(f"$\\mathbf{{A_{{s,total\\ requerido}} = {As_req_cm2:.2f} \\text{{ cm}}^2}}$")
+    memoria.append("<b>1. Área de Acero Total Requerida </b>")
     
+    # FORMATO: Fórmula abstracta -> Reemplazo numérico -> Resultado final
+    memoria.append("<i>Paso 1: Profundidad del bloque equivalente de compresión </i>")
+    memoria.append("$a = d - \\sqrt{d^2 - \\frac{2 M_u}{\\phi \\cdot 0.85 f'_c b}}$")
+    memoria.append(f"$a = {d:.1f} - \\sqrt{{{d:.1f}^2 - \\frac{{2({Mu:.0f})}}{{{phi}(0.85)({f_c})({b})}}}}$")
+    memoria.append(f"$\\mathbf{{a = {a_req_mm:.2f} \\text{{ mm}}}}$")
+    
+    memoria.append("<br>")
+    
+    memoria.append("<i>Paso 2: Área de acero requerida a tracción</i>")
+    memoria.append("$A_s = \\frac{0.85 f'_c a b}{f_y}$")
+    memoria.append(f"$A_s = \\frac{{0.85({f_c})({a_req_mm:.2f})({b})}}{{{f_y}}}$")
+    memoria.append(f"$\\mathbf{{A_{{s,total\\ requerido}} = {As_req_cm2:.2f} \\text{{ cm}}^2}}$")
     if As_previo_mm2 > 0:
         As_faltante = flex_res['As_requerido_mm2'] - As_previo_mm2
         memoria.append(f"<br><b>Acero Faltante:</b> {flex_res['As_requerido_mm2']/100:.2f} - {As_previo_mm2/100:.2f} = <b>{max(0, As_faltante/100):.2f} cm²</b>")
     memoria.append("<hr>")
 
     memoria.append("<h3>MÓDULO 3: VERIFICACIONES DE NORMA</h3>")
-    memoria.append("<b>2. Acero Mínimo ($A_{{s,min}}$)</b>")
-    memoria.append("$A_{{s,min}} = max \\left( \\frac{{0.25 \\sqrt{{f'_c}}}}{{f_y}} b d, \\frac{{1.4}}{{f_y}} b d \\right)$")
-    memoria.append(f"$Cláusula \\ 1: \\frac{{0.25 \\sqrt{{{f_c}}}}}{{{f_y}}} ({b})({d:.1f}) = {As_min_1_cm2:.2f} \\text{{ cm}}^2$")
-    memoria.append(f"$Cláusula \\ 2: \\frac{{1.4}}{{{f_y}}} ({b})({d:.1f}) = {As_min_2_cm2:.2f} \\text{{ cm}}^2$")
-    memoria.append(f"$\\mathbf{{A_{{s,min}} = max({As_min_1_cm2:.2f}, {As_min_2_cm2:.2f}) = {As_min_cm2:.2f} \\text{{ cm}}^2}}$")
+    memoria.append("<b>2. Acero Mínimo - Según NB 1225001 (Sec. 9.6.1.2)</b>")
+    memoria.append("$A_{{s,min}} = \\frac{1}{4} \\frac{\\sqrt{f'_c}}{f_y} b_w d$")
+    memoria.append(f"$A_{{s,min}} = \\frac{{1}}{{4}} \\frac{{\\sqrt{{{f_c}}}}}{{{f_y}}} ({b})({d:.1f})$")
+    memoria.append(f"$\\mathbf{{A_{{s,min}} = {As_min_cm2:.2f} \\text{{ cm}}^2}}$")
     
     if flex_res['As_requerido_mm2'] < flex_res['As_min_mm2']:
-        memoria.append("<b style='color:orange;'>>> ¡ALERTA! El acero total requerido es menor que el mínimo. Se debe usar el mínimo.</b>")
+        memoria.append("<b style='color:orange;'>>> ¡ALERTA! El acero total requerido es menor que el mínimo de norma. Se debe usar el mínimo.</b>")
     else:
         memoria.append("<b style='color:green;'>>> OK: El acero total requerido CUMPLE con el mínimo.</b>")
 
@@ -290,22 +335,29 @@ def _generar_memoria_flexion(d_in, flex_res, As_previo_mm2):
         memoria.append(f"   Área de acero a utilizar (As,final): <b>{flex_res['As_total_final_mm2']/100:.2f} cm²</b>")
     
     memoria.append("<br>")
-    memoria.append("<b>3. Acero Máximo para Falla Dúctil ($A_{{s,max}}$)</b>")
-    memoria.append("Corresponde a una deformación unitaria del acero $\\epsilon_t = 0.005$")
+    memoria.append("<b>3. Acero Máximo para Falla Dúctil </b>")
     memoria.append(f"Para f'c = {d_in['f_c']} MPa, el factor de profundidad <b>β₁ = {flex_res['beta1']:.3f}</b>.")
     
-    c_max = flex_res['c_max_mm']; a_max = flex_res['a_max_mm']; As_max_mm2 = flex_res['As_max_mm2']
-    ecu = 0.003
+    ecu = flex_res['ecu']; ety = flex_res['ety']; et_limite = flex_res['et_limite']
+    rho_max = flex_res['rho_max']
+    As_max_mm2 = flex_res['As_max_mm2']
     
-    memoria.append("<i>Profundidad del eje neutro (c):</i>")
-    memoria.append("$c = \\left( \\frac{\\epsilon_{{cu}}}{{\\epsilon_{{cu}} + \\epsilon_t}} \\right) d$")
-    memoria.append(f"$c = \\left( \\frac{{{ecu}}}{{{ecu} + 0.005}} \\right) {d:.1f} = {c_max:.1f} \\text{{ mm}}$")
-    memoria.append("<i>Profundidad del bloque de compresión (a):</i>")
-    memoria.append("$a = \\beta_1 c$")
-    memoria.append(f"$a = {flex_res['beta1']:.3f} \\cdot {c_max:.1f} = {a_max:.1f} \\text{{ mm}}$")
-    memoria.append("<i>Cálculo de As,max:</i>")
-    memoria.append("$A_{{s,max}} = \\frac{{0.85 f'_c a b}}{{f_y}}$")
-    memoria.append(f"$A_{{s,max}} = \\frac{{0.85 \\cdot {f_c} \\cdot {a_max:.1f} \\cdot {b}}}{{{f_y}}} = {As_max_mm2:.2f} \\text{{ mm}}^2$")
+    memoria.append("<i>Paso 1: Límite de deformación a tracción. </i>")
+    memoria.append("$\\epsilon_{{ty}} = \\frac{{f_y}}{{E_s}}$")
+    memoria.append(f"$\\epsilon_{{ty}} = \\frac{{{f_y}}}{{{Ey}}} = {ety:.5f}$")
+    memoria.append("$\\epsilon_t = \\epsilon_{{ty}} + \\epsilon_{{cu}}$")
+    memoria.append(f"$\\epsilon_t = {ety:.5f} + {ecu} = {et_limite:.5f}$")
+    
+    memoria.append("<br>")
+    memoria.append("<i>Paso 2: Cuantía máxima de acero.</i>")
+    memoria.append("$\\rho_{{max}} = 0.85 \\beta_1 \\frac{{f'_c}}{{f_y}} \\left( \\frac{{\\epsilon_{{cu}}}}{{\\epsilon_{{cu}} + \\epsilon_t}} \\right)$")
+    memoria.append(f"$\\rho_{{max}} = {gamma} \\cdot {flex_res['beta1']:.3f} \\cdot \\frac{{{f_c}}}{{{f_y}}} \\left( \\frac{{{ecu}}}{{{ecu} + {et_limite:.5f}}} \\right)$")
+    memoria.append(f"$\\mathbf{{\\rho_{{max}} = {rho_max:.5f}}}$")
+    
+    memoria.append("<br>")
+    memoria.append("<i>Paso 3: Área de acero máxima requerida.</i>")
+    memoria.append("$A_{{s,max}} = \\rho_{{max}} b_w d$")
+    memoria.append(f"$A_{{s,max}} = {rho_max:.5f} \\cdot {b} \\cdot {d:.1f} = {As_max_mm2:.2f} \\text{{ mm}}^2$")
     memoria.append(f"$\\mathbf{{A_{{s,max}} = {As_max_cm2:.2f} \\text{{ cm}}^2}}$")
     memoria.append("<hr>")
     
@@ -399,19 +451,12 @@ def _generar_memoria_selector_barras(d_in, flex_res, opciones_barras):
         memoria.append(f"<i>Verificando para un ancho de viga (b) de {d_in['b']} mm...</i>")
         for op in opciones_barras['compresion']:
              memoria.append(f"   - Opción: {int(op['cantidad'])} Ø{int(op['diametro'])}mm (As prov: {op['area_provista_mm2']/100:.2f} cm²)")
-    else:
-        memoria.append("<br><b>Sugerencias para armado superior (perchas):</b>")
-        if opciones_barras['perchas']:
-            req = opciones_barras['perchas'][0]['area_requerida_mm2']
-            memoria.append(f"Área requerida para perchas (30% de As,min): <b>{req/100:.2f} cm²</b>")
-            for op in opciones_barras['perchas']:
-                 memoria.append(f"   - Opción: 2 Ø{int(op['diametro'])}mm (As prov: {op['area_provista_mm2']/100:.2f} cm²)")
 
     memoria.append("<hr>")
     return memoria
 
 def _generar_memoria_corte(d_in, corte_res):
-    """Genera la memoria de cálculo para el diseño a corte, replicando el formato original."""
+    
     memoria = ["<h3>MÓDULO 6: DISEÑO A CORTE</h3>"]
     # Desempaquetamos datos
     f_c = d_in['f_c']; b = d_in['b']; d = d_in['d']; Vu = d_in['Vu']; d_est = d_in['d_est']
@@ -421,7 +466,7 @@ def _generar_memoria_corte(d_in, corte_res):
         memoria.append(f"<p style='color:orange;'>>> ADVERTENCIA: Para corte, fy se limita a {corte_res['fy_corte_MPa']} MPa.</p>")
     
     phi_Vc = corte_res['phi_Vc_N']
-    memoria.append("<b>1. Resistencia del hormigón (ΦVc):</b>")
+    memoria.append("<b>1. Resistencia del hormigón (ΦVc) - Según NB 1225001 (Sec.22.5.5.1)</b>")
     memoria.append("$\\phi V_c = \\phi \\frac{1}{6} \\sqrt{f'_c} b d$")
     memoria.append(f"$\\phi V_c = {phi_corte:.2f} \\cdot \\frac{{1}}{{6}} \\sqrt{{{f_c}}} \\cdot {b} \\cdot {d:.1f}$")
     memoria.append(f"$\\mathbf{{\\phi V_c = {phi_Vc / 1000:.2f} \\text{{ kN}}}}$")
@@ -431,28 +476,23 @@ def _generar_memoria_corte(d_in, corte_res):
     memoria.append("<b>2. Verificación de necesidad de estribos:</b>")
     if not corte_res['requiere_estribos_calculo']:
         memoria.append(f"<b>Vu ({Vu/1000:.2f} kN) <= 0.5 * ΦVc ({0.5*phi_Vc/1000:.2f} kN)</b>")
-        memoria.append("<p style='color:green;'>>> RESULTADO: No se necesitan estribos por cálculo.</p>")
+        memoria.append("<p style='color:green;'>>> RESULTADO: No se necesitan estribos por cálculo. Se diseña por armadura mínima.</p>")
     else:
         Vs = corte_res['Vs_N']
         Vs_max = corte_res['Vs_max_limite_N']
-        fy_corte = corte_res['fy_corte_MPa']
         Av = corte_res['Av_mm2']
         s_calc = corte_res['s_calculado_mm']
-        s_max_a = corte_res['s_max_a_mm']
-        s_max_b = corte_res['s_max_b_mm']
-        s_max_ref = corte_res['s_max_ref_min_mm']
-        s_max_vs = corte_res['s_max_por_magnitud_vs_mm']
-        s_final = corte_res['separacion_final_mm']
+        fy_corte = corte_res['fy_corte_MPa']
         
         memoria.append(f"<b>Vu ({Vu/1000:.2f} kN) > 0.5 * ΦVc ({0.5*phi_Vc/1000:.2f} kN)</b>")
         memoria.append("<p>>> RESULTADO: Se necesitan estribos por cálculo.</p>")
         
-        memoria.append("<br><b>3. Cortante a resistir por el acero (Vs):</b>")
+        memoria.append("<br><b>3. Cortante a resistir por el acero (Vs) - Según NB 1225001 (Sec.22.5.10.1)</b>")
         memoria.append("$V_s = \\frac{{V_u - \\phi V_c}}{{\\phi}}$")
         memoria.append(f"$V_s = \\frac{{{Vu:.2f} - {phi_Vc:.2f}}}{{{phi_corte}}}$")
         memoria.append(f"$\\mathbf{{V_s = {Vs / 1000:.2f} \\text{{ kN}}}}$")
         
-        memoria.append("<br><b>4. Verificación de la sección de hormigón (Vs,max):</b>")
+        memoria.append("<br><b>4. Verificación de la sección de hormigón (Vs,max)  - Según NB 1225001 (Sec.22.5.1.2)</b>")
         memoria.append("$V_{{s,max}} = \\frac{2}{3} \\sqrt{f'_c} b d$")
         memoria.append(f"$V_{{s,max}} = \\frac{{2}}{{3}} \\sqrt{{{f_c}}} \\cdot {b} \\cdot {d:.1f} = {Vs_max/1000:.2f} \\text{{ kN}}$")
         if Vs > Vs_max:
@@ -460,30 +500,86 @@ def _generar_memoria_corte(d_in, corte_res):
         else:
              memoria.append(f"<p style='color:green;'><b>Vs ({Vs/1000:.2f} kN) <= Vs,max ({Vs_max/1000:.2f} kN) -> OK.</b></p>")
 
-        memoria.append("<br><b>5. Espaciamiento requerido por resistencia (s_calc):</b>")
+        memoria.append("<br><b>5. Espaciamiento requerido por resistencia  - Según NB 1225001 (Sec.22.5.10.5.3)</b>")
         memoria.append(f"Para estribos Ø{int(d_est)}mm, Av = {Av:.2f} mm².")
         memoria.append("$s_{{calc}} = \\frac{{A_v f_{{yt}} d}}{{V_s}}$")
         if Vs > 0:
             memoria.append(f"$s_{{calc}} = \\frac{{{Av:.2f} \\cdot {fy_corte} \\cdot {d:.1f}}}{{{Vs:.2f}}}$")
         memoria.append(f"$\\mathbf{{s_{{calc}} = {s_calc:.1f} \\text{{ mm}}}}$")
         
-        memoria.append("<br><b>6. Verificación de Separaciones Máximas por Norma:</b>")
-        memoria.append("<i>Límite por refuerzo mínimo ($s_{max,ref}$):</i>")
-        memoria.append(f"$Cláusula \\ A: \\frac{{A_v f_{{yt}}}}{{0.062\\sqrt{{f'_c}} b}} = {s_max_a:.1f} \\text{{ mm}}$")
-        memoria.append(f"$Cláusula \\ B: \\frac{{A_v f_{{yt}}}}{{0.35 b}} = {s_max_b:.1f} \\text{{ mm}}$")
-        memoria.append(f"$\\mathbf{{s_{{max,ref}} = min({s_max_a:.1f}, {s_max_b:.1f}) = {s_max_ref:.1f} \\text{{ mm}}}}$")
+    # --- ESTOS CÁLCULOS NORMATIVOS AHORA SE MUESTRAN SIEMPRE ---
+    fy_corte = corte_res['fy_corte_MPa']
+    Av = corte_res['Av_mm2']
+    s_max_a = corte_res['s_max_a_mm']
+    s_max_b = corte_res['s_max_b_mm']
+    s_max_ref = corte_res['s_max_ref_min_mm']
+    s_max_vs = corte_res['s_max_por_magnitud_vs_mm']
+    Vs = corte_res.get('Vs_N', 0) # Si no hay estribos por cálculo, Vs es 0
+    Vs_lim_N = corte_res['Vs_limite_tabla_N']
+
+    num_seccion = "6" if corte_res['requiere_estribos_calculo'] else "3"
+
+    memoria.append(f"<br><b>{num_seccion}. Verificación de Separaciones Máximas por Norma - Según NB 1225001 (Sec.9.6.3.3)</b>")
+    memoria.append("<i>Límite por refuerzo mínimo:</i>")
+    
+    memoria.append("<ul>")
+    memoria.append("<li><b>Criterio 1:</b></li>")
+    memoria.append("$s_1 = \\frac{16 A_v f_{yt}}{\\sqrt{f'_c} b_w}$")
+    memoria.append(f"$s_1 = \\frac{{16 \\cdot {Av:.2f} \\cdot {fy_corte}}}{{\\sqrt{{{f_c}}} \\cdot {b}}} = {s_max_a:.1f} \\text{{ mm}}$")
+    
+    memoria.append("<br>")
+    memoria.append("<li><b>Criterio 2:</b></li>")
+    memoria.append("$s_2 = \\frac{A_v f_{yt}}{0.35 b_w}$")
+    memoria.append(f"$s_2 = \\frac{{{Av:.2f} \\cdot {fy_corte}}}{{0.35 \\cdot {b}}} = {s_max_b:.1f} \\text{{ mm}}$")
+    memoria.append("</ul>")
+    
+    memoria.append(f"$\\mathbf{{s_{{max,ref}} = min(s_1, s_2) = {s_max_ref:.1f} \\text{{ mm}}}}$")
+    
+    memoria.append("<br>")
+    memoria.append("<i>Límite por magnitud del cortante - Según NB 1225001 (Sec.9.7.6.2.2):</i>")
+    
+    # Paso 1
+    memoria.append("<b>Paso 1: Límite referencial de cortante en el acero </b>")
+    memoria.append("$V_{s,lim} = \\frac{1}{3} \\sqrt{f'_c} b_w d$")
+    memoria.append(f"$V_{{s,lim}} = \\frac{{1}}{{3}} \\sqrt{{{f_c}}} ({b}) ({d:.1f}) = {Vs_lim_N/1000:.2f} \\text{{ kN}}$")
+    
+    # Paso 2
+    memoria.append("<br>")
+    memoria.append("<b>Paso 2: Comparación y regla aplicable</b>")
+    memoria.append("Cortante en el acero requerido:")
+    memoria.append(f"$\\mathbf{{V_s = {Vs/1000:.2f} \\text{{ kN}}}}$")
+    
+    if Vs <= Vs_lim_N:
+        memoria.append(f"Como <b>Vs ({Vs/1000:.2f} kN) ≤ Vs,lim ({Vs_lim_N/1000:.2f} kN)</b>, la norma permite un espaciamiento máximo de <b>d/2</b> ó <b>600 mm</b>.")
+        memoria.append("<br>")
+        memoria.append("<b>Paso 3: Cálculo del espaciamiento</b>")
+        memoria.append("$s_{max,Vs} = \\min(d/2, 600 \\text{ mm})$")
+        memoria.append(f"$s_{{max,Vs}} = \\min({d:.1f}/2, 600 \\text{{ mm}})$")
+    else:
+        memoria.append(f"Como <b>Vs ({Vs/1000:.2f} kN) > Vs,lim ({Vs_lim_N/1000:.2f} kN)</b>, la norma exige reducir el espaciamiento máximo a <b>d/4</b> ó <b>300 mm</b>.")
+        memoria.append("<br>")
+        memoria.append("<b>Paso 3: Cálculo del espaciamiento ($s_{max,Vs}$)</b>")
+        memoria.append("$s_{max,Vs} = \\min(d/4, 300 \\text{ mm})$")
+        memoria.append(f"$s_{{max,Vs}} = \\min({d:.1f}/4, 300 \\text{{ mm}})$")
         
-        memoria.append("<i>Límite por magnitud de Vs ($s_{max,Vs}$):</i>")
-        if Vs <= corte_res['Vs_limite_tabla_N']: 
-            memoria.append(f"$Vs <= V_s,lim -> s_{{max,Vs}} = min(d/2, 600mm) = {s_max_vs:.1f} \\text{{ mm}}$")
-        else: 
-            memoria.append(f"$Vs > V_s,lim -> s_{{max,Vs}} = min(d/4, 300mm) = {s_max_vs:.1f} \\text{{ mm}}$")
-        
-        memoria.append("<br><i>Decisión Final de Espaciamiento ($s_{final}$):</i>")
+    memoria.append(f"$\\mathbf{{s_{{max,Vs}} = {s_max_vs:.1f} \\text{{ mm}}}}$")
+    
+    # Decisión Final
+    s_final = corte_res['separacion_final_mm']
+    s_final_constructiva = corte_res['separacion_final_constructiva_mm']
+    
+    memoria.append("<br><i>Decisión Final de Espaciamiento:</i>")
+    if corte_res['requiere_estribos_calculo']:
+        s_calc = corte_res['s_calculado_mm']
         memoria.append("$s_{{final}} = min(s_{{calc}}, s_{{max,ref}}, s_{{max,Vs}})$")
         memoria.append(f"$s_{{final}} = min({s_calc:.1f}, {s_max_ref:.1f}, {s_max_vs:.1f}) \\text{{ mm}}$")
-        memoria.append(f"$\\mathbf{{s_{{final}} = {s_final:.0f} \\text{{ mm}}}}$")
+    else:
+        memoria.append("$s_{{final}} = min(s_{{max,ref}}, s_{{max,Vs}})$")
+        memoria.append(f"$s_{{final}} = min({s_max_ref:.1f}, {s_max_vs:.1f}) \\text{{ mm}}$")
         
+    memoria.append(f"$\\mathbf{{s_{{final}} = {s_final:.0f} \\text{{ mm}}}}$")
+    memoria.append(f"<h2 style='color:green; border: 2px solid green; padding: 10px;'>Usar estribos: Ø{int(d_est)} @ {s_final_constructiva:.0f} mm</h2>")
+    
     memoria.append("<hr>")
     return memoria
 

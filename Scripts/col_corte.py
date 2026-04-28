@@ -12,7 +12,7 @@ normativo a corte de los elementos tipo columna del modelo espacial.
 # Este programa es software libre: puedes redistribuirlo y/o modificarlo
 # bajo los términos de la Licencia Pública General GNU (GNU GPL) publicada
 # por la Free Software Foundation, ya sea la versión 3 de la Licencia, o
-# cualquier versión posterior.
+# (a tu elección) cualquier versión posterior.
 #
 # Este programa se distribuye con la esperanza de que sea útil,
 # pero SIN GARANTÍA ALGUNA; ni siquiera la garantía implícita
@@ -67,12 +67,20 @@ def _calcular_diseno_corte_columna(f_c, f_y, Vu, Nu, b, h, d, d_est, d_long):
     lambda_val = 1.0
     Ag = b * h
     
-    # 1. Resistencia del Hormigón (Vc) - NB 22.5.6.1
-    termino_axial = (1 + (Nu / (14 * Ag)))
-    if termino_axial > 2.0:
-        termino_axial = 2.0
-    elif termino_axial < 0:
-        termino_axial = 0.0 
+    # 1. Resistencia del Hormigón (Vc) - NB 22.5.6.1 y 22.5.7.1
+    es_traccion = Nu < 0
+    if not es_traccion:
+        # Compresión
+        termino_axial = (1 + (Nu / (14 * Ag)))
+        if termino_axial > 2.0:
+            termino_axial = 2.0
+        elif termino_axial < 0:
+            termino_axial = 0.0 
+    else:
+        # Tracción (Uso de 3.5 en ACI 318-14, con valor absoluto de Nu como se solicitó)
+        termino_axial = (1 - (abs(Nu) / (3.5 * Ag)))
+        if termino_axial < 0:
+            termino_axial = 0.0 
 
     Vc = (lambda_val * math.sqrt(f_c) / 6) * termino_axial * b * d
     phi_Vc = phi_corte * Vc
@@ -80,7 +88,8 @@ def _calcular_diseno_corte_columna(f_c, f_y, Vu, Nu, b, h, d, d_est, d_long):
     
     resultados.update({
         'Ag_mm2': Ag, 'termino_axial': termino_axial, 'Vc_N': Vc, 
-        'phi_Vc_N': phi_Vc, 'limite_estribos_min_N': limite_estribos_min
+        'phi_Vc_N': phi_Vc, 'limite_estribos_min_N': limite_estribos_min,
+        'es_traccion': es_traccion
     })
 
     # 2. Verificar si se requieren estribos por cálculo - NB 10.6.2.1
@@ -185,18 +194,24 @@ def _generar_memoria_corte_columna(d_in, corte_res):
     termino_axial = corte_res['termino_axial']
     
     # --- CITACIÓN ACTUALIZADA ---
-    memoria.append("<b>1. Resistencia del Hormigón (Vc) - (NB 22.5.6.1)</b>")
-    memoria.append(f"Se utiliza la ecuación detallada para miembros con carga axial (Nu = {Nu/1000:.2f} kN):")
+    memoria.append("<b>1. Resistencia del Hormigón (Vc) - Según NB 1225001 (Sec. 22.5.6.1 / 22.5.7.1)</b>")
+    es_traccion = corte_res.get('es_traccion', False)
     
-    memoria.append(r"$V_c = \frac{\lambda \sqrt{f'_c}}{6} \left(1 + \frac{N_u}{14 A_g}\right) b_w d$")
-    memoria.append(f"$Término \\ Axial = \\left(1 + \\frac{{{Nu:.0f}}}{{14 \\times {Ag:.0f}}}\\right) = {termino_axial:.3f}$")
+    if not es_traccion:
+        memoria.append(f"Se utiliza la ecuación detallada para miembros con compresión axial (Nu = {Nu/1000:.2f} kN):")
+        memoria.append(r"$V_c = \frac{\lambda \sqrt{f'_c}}{6} \left(1 + \frac{N_u}{14 A_g}\right) b_w d$")
+        memoria.append(f"$Término \\ Axial = \\left(1 + \\frac{{{Nu:.0f}}}{{14 \\times {Ag:.0f}}}\\right) = {termino_axial:.3f}$")
+    else:
+        memoria.append(f"Se utiliza la ecuación detallada para miembros con tracción axial (Nu = {Nu/1000:.2f} kN):")
+        memoria.append(r"$V_c = \frac{\lambda \sqrt{f'_c}}{6} \left(1 - \frac{|N_u|}{3.5 A_g}\right) b_w d$")
+        memoria.append(f"$Término \\ Axial = \\left(1 - \\frac{{{abs(Nu):.0f}}}{{3.5 \\times {Ag:.0f}}}\\right) = {termino_axial:.3f}$")
     memoria.append(f"$V_c = \\frac{{\\sqrt{{{f_c}}}}}{{{6}}} ({termino_axial:.3f}) \\times {b:.0f} \\times {d:.1f}$")
     memoria.append(f"$\\mathbf{{V_c = {corte_res['Vc_N']:.0f} \\text{{ N}} = {Vc_kN:.2f} \\text{{ kN}}}}$")
     memoria.append(f"$\\phi V_c = {phi_corte} \\times {Vc_kN:.2f} \\text{{ kN}} = \\mathbf{{{phi_Vc_kN:.2f} \\text{{ kN}}}}$")
     memoria.append("<br>")
     
     # --- CITACIÓN ACTUALIZADA ---
-    memoria.append("<b>2. Verificación de Requisito de Estribos (NB 10.6.2.1)</b>")
+    memoria.append("<b>2. Verificación de Requisito de Estribos - Según NB 1225001 (Sec.10.6.2.1)</b>")
     memoria.append("Se requieren estribos de corte si:")
     memoria.append(r"$V_u \geq 0.5 \cdot \phi V_c$")
     
@@ -214,7 +229,7 @@ def _generar_memoria_corte_columna(d_in, corte_res):
     
     if corte_res['requiere_estribos_calculo']:
         # --- CITACIÓN ACTUALIZADA ---
-        memoria.append("<br><b>A. Separación por Resistencia (s_res) - (NB 22.5.10.1)</b>")
+        memoria.append("<br><b>A. Separación por Resistencia - Según NB 1225001 (Sec.22.5.10.1)</b>")
         if corte_res['Vs_N'] > 0:
             Vs_kN = corte_res['Vs_N'] / 1000
             s_res = corte_res['s_por_resistencia_mm']
@@ -222,21 +237,20 @@ def _generar_memoria_corte_columna(d_in, corte_res):
             
             memoria.append(r"$V_s = \frac{V_u - \phi V_c}{\phi}$")
             memoria.append(f"$V_s = \\frac{{{Vu/1000:.2f} - {phi_Vc_kN:.2f}}}{{{phi_corte}}} = {Vs_kN:.2f} \\text{{ kN}}$")
-            memoria.append(r"$s = \frac{A_v f_{yt} d}{V_s}$") # Esta es s_res
-            memoria.append(f"$s_{{res}} = \\frac{{{corte_res['Av_mm2']:.2f} \\times {d_in['f_y']} \\times {d:.1f}}}{{{corte_res['Vs_N']:.0f}}}$")
-            memoria.append(f"$\\mathbf{{s_{{res}} = {s_res:.1f} \\text{{ mm}}}}$")
+            memoria.append(r"$s_{{calc}} = \frac{A_v f_{yt} d}{V_s}$") # Esta es s_res
+            memoria.append(f"$s_{{calc}} = \\frac{{{corte_res['Av_mm2']:.2f} \\times {d_in['f_y']} \\times {d:.1f}}}{{{corte_res['Vs_N']:.0f}}}$")
+            memoria.append(f"$\\mathbf{{s_{{calc}} = {s_res:.1f} \\text{{ mm}}}}$")
         else:
             memoria.append("Vu ≤ ΦVc. No se requiere separación por resistencia (Vs=0).")
-            memoria.append("$\\mathbf{s_{res} = \\infty}$")
+            memoria.append("$\\mathbf{s_{calc} = \\infty}$")
 
-        # --- CITACIÓN ACTUALIZADA ---
-        memoria.append("<br><b>B. Separación por Armadura Mínima de Corte (s_min,shear) - (NB 10.6.2.2)</b>")
+        memoria.append("<br><b>B. Separación por Armadura Mínima de Corte - Según NB 1225001 (Sec.10.6.2.2)</b>")
         s_min_a = corte_res['s_max_min_shear_a_mm']
         s_min_b = corte_res['s_max_min_shear_b_mm']
         s_min_shear = corte_res['s_por_arm_minima_shear_mm']
         
-        memoria.append(r"$s_a = \frac{A_v f_{yt}}{(\sqrt{f'_c}/16) b_w}$") # Fórmula reordenada de
-        memoria.append(f"$s_a = \\frac{{{corte_res['Av_mm2']:.2f} \\times {d_in['f_y']}}}{{(\\sqrt{{{d_in['f_c']}}}/16) \\times {b}}} = {s_min_a:.1f} \\text{{ mm}}$")
+        memoria.append(r"$s_a = \frac{16 A_v f_{yt}}{(\sqrt{f'_c}) b_w}$")
+        memoria.append(f"$s_a = \\frac{{16 \\times {corte_res['Av_mm2']:.2f} \\times {d_in['f_y']}}}{{\\sqrt{{{d_in['f_c']}}} \\times {b}}} = {s_min_a:.1f} \\text{{ mm}}$")
         
         # --- LÓGICA Y CITACIÓN ACTUALIZADA ---
         memoria.append(r"$s_b = \frac{A_v f_{yt}}{0.34 b_w}$")
@@ -245,15 +259,15 @@ def _generar_memoria_corte_columna(d_in, corte_res):
         memoria.append(f"$\\mathbf{{s_{{min,shear}} = min({s_min_a:.1f}, {s_min_b:.1f}) = {s_min_shear:.1f} \\text{{ mm}}}}$")
 
         # --- CITACIÓN ELIMINADA (No estaba en el doc) ---
-        memoria.append("<br><b>C. Separación Máxima por Cortante (s_max,shear)</b>")
+        memoria.append("<br><b>C. Separación Máxima por Cortante - Según NB 1225001 (Sec.10.7.6.5.2)</b>")
         Vs_lim_kN = corte_res['Vs_limite_tabla_N'] / 1000
         Vs_kN = corte_res['Vs_N'] / 1000
         s_max_vs = corte_res['s_max_por_magnitud_vs_mm']
         
         # --- CORRECCIÓN BUG LATEX ---
-        memoria.append(r"$Límite \ V_s = (1/3)\sqrt{f'_c} b d$")
+        memoria.append("$V_{s,lim} = \\frac{1}{3} \\sqrt{f'_c} b d$")
         
-        memoria.append(f"$Límite \\ V_s = (1/3)\\sqrt{{{f_c}}} \\times {b:.0f} \\times {d:.1f} = {Vs_lim_kN:.2f} \\text{{ kN}}$")
+        memoria.append(f"$V_{{s,lim}} = \\frac{{1}}{{3}}\\sqrt{{{f_c}}} \\times {b:.0f} \\times {d:.1f} = {Vs_lim_kN:.2f} \\text{{ kN}}$")
         
         if corte_res['Vs_N'] <= corte_res['Vs_limite_tabla_N']:
             memoria.append(f"$V_s \\ ({Vs_kN:.2f} \\text{{ kN}}) \\leq \\text{{Límite}} \\ ({Vs_lim_kN:.2f} \\text{{ kN}}) \\rightarrow s_{{max}} = min(d/2, 600mm)$")
@@ -263,7 +277,7 @@ def _generar_memoria_corte_columna(d_in, corte_res):
         memoria.append(f"$\\mathbf{{s_{{max,shear}} = {s_max_vs:.1f} \\text{{ mm}}}}$")
     
     # --- CITACIÓN Y LÓGICA ACTUALIZADA ---
-    memoria.append("<br><b>D. Separación Máxima por Confinamiento (s_max,confin) - (NB 25.7.2.1)</b>")
+    memoria.append("<br><b>D. Separación Máxima por Confinamiento - Según NB 1225001 (Sec.25.7.2.1)</b>")
     s_conf_1 = corte_res['s_max_confin_1_mm']
     s_conf_2 = corte_res['s_max_confin_2_mm']
     s_conf_3 = corte_res['s_max_confin_3_mm']

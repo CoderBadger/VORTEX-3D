@@ -13,7 +13,7 @@ para verificar estados de carga específicos.
 # Este programa es software libre: puedes redistribuirlo y/o modificarlo
 # bajo los términos de la Licencia Pública General GNU (GNU GPL) publicada
 # por la Free Software Foundation, ya sea la versión 3 de la Licencia, o
-# cualquier versión posterior.
+# (a tu elección) cualquier versión posterior.
 #
 # Este programa se distribuye con la esperanza de que sea útil,
 # pero SIN GARANTÍA ALGUNA; ni siquiera la garantía implícita
@@ -70,11 +70,19 @@ def generar_acero_manual(b, d_barra, capas):
     return acero
 
 def calcular_phi(epsilon_t, fy):
-    """Calcula el factor de reducción de resistencia (phi) según ACI 318-19."""
-    ety = fy / 200000.0
-    if epsilon_t <= ety: return 0.65
-    elif epsilon_t >= 0.005: return 0.90
-    else: return 0.65 + 0.25 * (epsilon_t - ety) / (0.005 - ety)
+    """Calcula el factor de reducción de resistencia (phi) según ACI 318-14 / NB 1225001."""
+    Es = 200000.0
+    ecu = 0.003
+    ety = fy / Es
+    et_limite = ety + ecu  # Límite normativo de tracción (ej: 0.0021 + 0.003 = 0.0051)
+    
+    if epsilon_t <= ety: 
+        return 0.65
+    elif epsilon_t >= et_limite: 
+        return 0.90
+    else: 
+        # Interpolación exacta en la Zona de Transición
+        return 0.65 + 0.25 * (epsilon_t - ety) / (et_limite - ety)
 
 def calcular_punto_diagrama(c, fc, fy, b, h, acero_dist):
     """Función universal que calcula (Pn, Mn) para una profundidad 'c' dada."""
