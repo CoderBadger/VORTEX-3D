@@ -26,7 +26,7 @@ comunicación entre la vista 3D y el modelo de datos estructural.
 # <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-version = "1.0" 
+version = "1.0.1" 
 import sys
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QWidget, QVBoxLayout, QSplitter, QPushButton,
                              QMessageBox, QFileDialog, QToolBar, QStatusBar, QCheckBox, QFormLayout,

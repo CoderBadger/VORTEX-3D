@@ -2075,6 +2075,31 @@ class DialogoConfigReporte(QDialog):
         layout_combos.addWidget(self.arbol_combos)
         layout_principal.addWidget(grupo_combos)
 
+        # --- Grupo Elementos Específicos ---
+        self.grupo_elementos = QGroupBox("Seleccionar Elementos de Interés")
+        layout_elem = QVBoxLayout(self.grupo_elementos)
+
+        self.check_todos_elem = QCheckBox("Todos")
+        self.check_todos_elem.setChecked(True)
+
+        layout_input_elem = QHBoxLayout()
+        self.label_elem = QLabel("Elementos:")
+        self.input_elem = QLineEdit()
+        self.input_elem.setPlaceholderText("Ej: 1-5,9,12-17")
+        self.input_elem.setEnabled(False) # Desactivado por defecto, ya que "Todos" inicia activado
+
+        layout_input_elem.addWidget(self.label_elem)
+        layout_input_elem.addWidget(self.input_elem)
+
+        layout_elem.addWidget(self.check_todos_elem)
+        layout_elem.addLayout(layout_input_elem)
+
+        self.check_todos_elem.stateChanged.connect(
+            lambda state: self.input_elem.setEnabled(not bool(state))
+        )
+        
+        layout_principal.addWidget(self.grupo_elementos)
+
         # --- Grupo Secciones Principales ---
         grupo_secciones = QGroupBox("Secciones Principales del Reporte")
         layout_secciones = QGridLayout(grupo_secciones)
@@ -2156,6 +2181,33 @@ class DialogoConfigReporte(QDialog):
         self.arbol_combos.expandAll()
         self.arbol_combos.header().setSectionResizeMode(QHeaderView.ResizeToContents)
 
+    def _parsear_string_elementos(self, texto):
+        """
+        Convierte un string estilo '1-5,9,12-17' en una lista de enteros únicos [1,2,3,4,5,9,12,13,14,15,16,17]
+        """
+        elementos_seleccionados = set()
+        if not texto.strip():
+            return list(elementos_seleccionados)
+            
+        partes = texto.split(',')
+        for parte in partes:
+            parte = parte.strip()
+            if not parte: continue
+            if '-' in parte:
+                try:
+                    inicio_str, fin_str = parte.split('-')
+                    inicio = int(inicio_str)
+                    fin = int(fin_str)
+                    if inicio <= fin:
+                        elementos_seleccionados.update(range(inicio, fin + 1))
+                except ValueError:
+                    pass # Ignoramos silenciosamente si el usuario teclea letras en el rango
+            else:
+                try:
+                    elementos_seleccionados.add(int(parte))
+                except ValueError:
+                    pass # Ignoramos silenciosamente si hay caracteres extraños
+        return list(elementos_seleccionados)
 
     def _abrir_dialogo_avanzado(self):
         dialogo_avz = DialogoOpcionesAvanzadasReporte(self.config_avanzada, self)
@@ -2189,6 +2241,20 @@ class DialogoConfigReporte(QDialog):
 
         # 3. Opciones Avanzadas 
         config.update(self.config_avanzada) # Añade/sobrescribe con las opciones avanzadas
+
+        # 4. Filtro de Elementos Específicos
+        if self.check_todos_elem.isChecked():
+            config['elementos_especificos'] = 'todos'
+        else:
+            texto_ingresado = self.input_elem.text()
+            elementos_filtrados = self._parsear_string_elementos(texto_ingresado)
+            
+            # Si el usuario desmarca "Todos" pero deja el cuadro vacío o con formato inválido, 
+            # devolvemos una lista vacía para no procesar elementos al azar.
+            if not elementos_filtrados:
+                config['elementos_especificos'] = [] 
+            else:
+                config['elementos_especificos'] = elementos_filtrados
 
         return config
 
