@@ -336,26 +336,30 @@ class GeneradorReporte:
 
         # Mostrar Matrices Locales/T (si está activado en avanzadas)
         if config.get('mostrar_matrices_locales', False):
-             self.reporte.append("3.2 Matrices Locales y de Transformación por Elemento:")
-             k_locales = datos_ensamblaje.get('k_locales', {})
-             t_matrices = datos_ensamblaje.get('T_matrices', {})
-             
-             for id_elem in sorted(k_locales.keys()):
-                 self.reporte.append(f"  --- ELEMENTO {id_elem} ---")
-                 
-                 # Matriz de Transformación
-                 if id_elem in t_matrices: 
-                     self.reporte.extend(_formatear_matriz(t_matrices[id_elem], f"Matriz de Transformación [T] E{id_elem}", max_dim=12))
-                 
-                 # Matriz de Rigidez Local
-                 if id_elem in k_locales: 
-                     self.reporte.extend(_formatear_matriz(k_locales[id_elem], f"Matriz de Rigidez Local [k] E{id_elem}", max_dim=12))
-                 
-                 self.reporte.append("-" * 40) # Separador visual por elemento
-                 
-             if not k_locales:
-                 self.reporte.append("  (No hay matrices locales/T disponibles)")
-             self.reporte.append("\n")
+            self.reporte.append("3.2 Matrices Locales y de Transformación por Elemento:")
+            k_locales = datos_ensamblaje.get('k_locales', {})
+            t_matrices = datos_ensamblaje.get('T_matrices', {})
+            elementos_filtro = config.get('elementos_especificos', 'todos')
+            
+            for id_elem in sorted(k_locales.keys()):
+                if elementos_filtro != 'todos' and id_elem not in elementos_filtro:
+                    continue
+
+                self.reporte.append(f"  --- ELEMENTO {id_elem} ---")
+                
+                # Matriz de Transformación
+                if id_elem in t_matrices: 
+                    self.reporte.extend(_formatear_matriz(t_matrices[id_elem], f"Matriz de Transformación [T] E{id_elem}", max_dim=12))
+                
+                # Matriz de Rigidez Local
+                if id_elem in k_locales: 
+                    self.reporte.extend(_formatear_matriz(k_locales[id_elem], f"Matriz de Rigidez Local [k] E{id_elem}", max_dim=12))
+                
+                self.reporte.append("-" * 40) # Separador visual por elemento
+                
+            if not k_locales:
+                self.reporte.append("  (No hay matrices locales/T disponibles)")
+            self.reporte.append("\n")
         
         # Mostrar K_global según configuración avanzada
         mostrar_kglobal_opt = config.get('mostrar_kglobal', 'diagonal') # Default 'diagonal'
@@ -453,7 +457,13 @@ class GeneradorReporte:
             resultados_por_elem = defaultdict(lambda: {'Px': [], 'Py': [], 'Pz': [], 'Mx': [], 'My': [], 'Mz': []})
             efectos = ['Axial (Px)', 'Cortante (Py)', 'Cortante (Pz)', 'Torsión (Mx)', 'Momento (My)', 'Momento (Mz)']
             
+            elementos_filtro = config.get('elementos_especificos', 'todos')
+
             for id_elem in sorted(self.modelo.elementos.keys()):
+                 # Validar si el elemento actual está en la lista de interés
+                 if elementos_filtro != 'todos' and id_elem not in elementos_filtro:
+                     continue
+                     
                  for nombre_combo, nombre_sub_caso in casos_seleccionados:
                      resultados = self.modelo.resultados_calculo.get(nombre_combo, {}).get(nombre_sub_caso)
                      if not resultados: continue
@@ -507,22 +517,26 @@ class GeneradorReporte:
             self.reporte.append("  Modo: Detalle de fuerzas nodales por caso seleccionado")
             
             for nombre_combo, nombre_sub_caso in sorted(casos_seleccionados):
-                 resultados = self.modelo.resultados_calculo.get(nombre_combo, {}).get(nombre_sub_caso)
-                 if not resultados: continue
+                resultados = self.modelo.resultados_calculo.get(nombre_combo, {}).get(nombre_sub_caso)
+                if not resultados: continue
 
-                 self.reporte.append(f"\n  Caso: \"{nombre_combo} / {nombre_sub_caso}\"")
-                 fuerzas_internas_dict = resultados.get('fuerzas_internas', {})
+                self.reporte.append(f"\n  Caso: \"{nombre_combo} / {nombre_sub_caso}\"")
+                fuerzas_internas_dict = resultados.get('fuerzas_internas', {})
                 
-                 if not fuerzas_internas_dict:
-                     self.reporte.append("    (Sin fuerzas internas calculadas para este caso)")
-                     continue
+                if not fuerzas_internas_dict:
+                    self.reporte.append("    (Sin fuerzas internas calculadas para este caso)")
+                    continue
                 
-                 for id_elem in sorted(self.modelo.elementos.keys()): 
-                     f_int_vec = fuerzas_internas_dict.get(id_elem) 
-                     if f_int_vec is not None:
-                         self.reporte.append(f"    Elemento {id_elem}:")
-                         self.reporte.extend(_formatear_vector_fuerzas_internas(f_int_vec))
-                 self.reporte.append("-" * 40)
+                for id_elem in sorted(self.modelo.elementos.keys()): 
+                    # Validar si el elemento actual está en la lista de interés
+                    if elementos_filtro != 'todos' and id_elem not in elementos_filtro:
+                        continue
+                         
+                    f_int_vec = fuerzas_internas_dict.get(id_elem) 
+                    if f_int_vec is not None:
+                        self.reporte.append(f"    Elemento {id_elem}:")
+                        self.reporte.extend(_formatear_vector_fuerzas_internas(f_int_vec))
+                self.reporte.append("-" * 40)
         
         self.reporte.append("\n")
 
